@@ -33,18 +33,21 @@ ENV APP_URL=${APP_URL}
 # Node.js binary (copied from the official node image — root package.json's
 # engines field already requires node >=22, this satisfies it) while bun
 # still owns install/db/api. Turbo isn't needed for this single command.
-COPY --from=node:22-slim /usr/local/bin/node /usr/local/bin/node
+# Pinned to the exact patch tag verified to run standalone inside this Bun
+# image (not the floating `22-slim` tag) — a future patch bump could ship a
+# different glibc than what was tested here.
+COPY --from=node:22.23.2-slim /usr/local/bin/node /usr/local/bin/node
 RUN bunx turbo run build --filter=api
 RUN cd apps/app && /usr/local/bin/node node_modules/.bin/next build
 
-FROM oven/bun:1.3.12-slim AS runtime
+# Nothing in this app runs under bun at runtime (`next start` needs real
+# Node — see build stage comment), so the runtime stage is Node directly
+# rather than Bun-plus-a-borrowed-node-binary: simpler, and it removes the
+# risk of a rebuild pulling a Bun base and a Node base with mismatched
+# glibc versions.
+FROM node:22.23.2-slim AS runtime
 WORKDIR /repo
 ENV NODE_ENV=production
 COPY --from=build /repo /repo
-# `next start` also uses the same worker-thread machinery that crashes under
-# bun at build time (see build stage comment) — run it with real Node too,
-# for the same reason. bun itself is unused at runtime for this app; kept as
-# the base image only because it already ships everything else needed.
-COPY --from=node:22-slim /usr/local/bin/node /usr/local/bin/node
 EXPOSE 3000
-CMD ["sh", "-c", "cd apps/app && /usr/local/bin/node node_modules/.bin/next start -H 0.0.0.0 -p 3000"]
+CMD ["sh", "-c", "cd apps/app && node node_modules/.bin/next start -H 0.0.0.0 -p 3000"]
