@@ -18,10 +18,28 @@ FROM deps AS build
 COPY . .
 RUN bunx turbo run build --filter=agent
 
+# Runtime image was copying the FULL monorepo node_modules from `build`
+# (dev + prod deps for app/api/agent/packages/* all at once, ~4.5GB) --
+# reinstall production-only deps here instead. Discovered in prod
+# (29/08/2026): this image alone, plus apps/api's identical pattern,
+# repeatedly exhausted vigiep1's disk (72GB) across rebuild cycles.
+# microsandbox/just-bash moved from devDependencies to dependencies in
+# apps/agent/package.json first -- eve's sandbox backend needs at least
+# one of them importable at runtime even when docker.sock (the preferred
+# backend here) is mounted (cf. Task 5's carried-forward minor finding).
+FROM build AS prod-deps
+# --ignore-scripts : sans ca, la reinstallation redeclenche le postinstall
+# de @crm/db ("prisma generate"), qui echoue (exit 127, prisma est une
+# devDependency, exclue par --production). Sans objet ici : le Prisma
+# Client a deja ete genere pendant `build` (packages/db/src/generated/),
+# et ce find ne touche qu'aux node_modules, pas a ce dossier.
+RUN find . -maxdepth 4 -type d -name node_modules -prune -exec rm -rf {} + \
+	&& bun install --production --frozen-lockfile --ignore-scripts
+
 FROM oven/bun:1.3.12-slim AS runtime
 WORKDIR /repo
 ENV NODE_ENV=production
-COPY --from=build /repo /repo
+COPY --from=prod-deps /repo /repo
 EXPOSE 2000
 # Not `bun apps/agent/scripts/start.ts` from /repo: start.ts spawns the `eve`
 # CLI via child_process.spawn, which resolves against $PATH, and the plain
