@@ -13,6 +13,15 @@ import {
 } from "./gmail-mime";
 
 /**
+ * A message with more recipients than this is a broadcast/mailing-list --
+ * real 1:1 or small-group business correspondence never has this many.
+ * Measured on real data (WP crm-enrich, 02/09/2026): the smallest observed
+ * mailing-list broadcast carried 26 recipients, the largest real 1:1 thread
+ * carried 1. This threshold sits with a wide margin below that gap.
+ */
+export const BULK_MAIL_RECIPIENT_THRESHOLD = 5;
+
+/**
  * Extracted verbatim from GmailSyncService's former private parse()/sentAt()
  * so the contact-history backfill can reuse it without duplicating parsing
  * logic (apps/api/src/contacts/contact-history-backfill.service.ts).
@@ -27,6 +36,8 @@ export function parseGmailMessage(
 
 	const from = parseAddress(header(headers, "from") ?? "");
 	if (!from) return null;
+
+	if (header(headers, "list-unsubscribe")) return null;
 
 	const sentAt = messageSentAt(message, headers);
 	if (!sentAt) return null;
@@ -45,6 +56,9 @@ export function parseGmailMessage(
 		kind: "cc" as const,
 	}));
 
+	const recipients = [...to, ...cc];
+	if (recipients.length > BULK_MAIL_RECIPIENT_THRESHOLD) return null;
+
 	const body = stripQuotedHistory(plainTextBody(message.payload));
 
 	return {
@@ -52,7 +66,7 @@ export function parseGmailMessage(
 		rootId,
 		subject: header(headers, "subject"),
 		from,
-		recipients: [...to, ...cc],
+		recipients,
 		body,
 		sentAt,
 		gmailMessageId: message.id ?? null,
