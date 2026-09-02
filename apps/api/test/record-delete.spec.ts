@@ -5,6 +5,7 @@ import { AgentTriggerService } from "../src/agent/agent-trigger.service";
 import { CompaniesService } from "../src/companies/companies.service";
 import { CompanyDirectoryService } from "../src/companies/company-directory.service";
 import { FaviconService } from "../src/companies/favicon.service";
+import type { ContactHistoryBackfillService } from "../src/contacts/contact-history-backfill.service";
 import { ContactsService } from "../src/contacts/contacts.service";
 import { ActivityStampService } from "../src/crm/activity-stamp.service";
 import { EnrichmentLogService } from "../src/crm/enrichment-log.service";
@@ -37,6 +38,14 @@ const queue = new AgentQueueService(db);
 const conversion = new ConversionService(db);
 
 const fields = new FieldsService(db, agent);
+// actorId is never passed by this spec's contacts.create({...}) calls, so
+// the backfill branch never fires -- history.run is a no-op stub.
+const history = {
+	run: async () => ({
+		gmail: { status: "skipped" as const, written: 0 },
+		calendar: { status: "skipped" as const, written: 0 },
+	}),
+} as unknown as ContactHistoryBackfillService;
 const contacts = new ContactsService(
 	db,
 	directory,
@@ -44,6 +53,7 @@ const contacts = new ContactsService(
 	queue,
 	stamp,
 	fields,
+	history,
 );
 const companies = new CompaniesService(
 	db,

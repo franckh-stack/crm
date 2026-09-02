@@ -53,6 +53,7 @@ export type EventsQuery = {
 	timeMax?: string;
 	pageToken?: string;
 	maxResults?: number;
+	q?: string;
 };
 
 @Injectable()
@@ -73,7 +74,29 @@ export class CalendarClient {
 			maxResults: query.maxResults ?? 250,
 			syncToken: query.syncToken,
 			pageToken: query.pageToken,
+			q: query.q,
 			...window,
+		});
+	}
+
+	/**
+	 * Targeted search for a single contact backfill (not the live incremental
+	 * sync, which never passes q).
+	 */
+	async searchByParticipant(
+		accessToken: string,
+		options: {
+			email: string;
+			timeMin: Date;
+			timeMax: Date;
+			maxResults?: number;
+		},
+	): Promise<MailboxResult<EventsPage>> {
+		return this.listEvents(accessToken, {
+			q: options.email,
+			timeMin: options.timeMin.toISOString(),
+			timeMax: options.timeMax.toISOString(),
+			maxResults: options.maxResults,
 		});
 	}
 }

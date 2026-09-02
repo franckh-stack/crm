@@ -55,15 +55,45 @@ export class GmailClient {
 			before: Date;
 			pageToken?: string;
 			maxResults?: number;
+			query?: string;
 		},
 	): Promise<MailboxResult<MessageList>> {
 		const after = Math.floor(options.after.getTime() / 1000);
 		const before = Math.ceil(options.before.getTime() / 1000);
+		const q = [
+			WORK_MAIL_QUERY,
+			`after:${after}`,
+			`before:${before}`,
+			options.query,
+		]
+			.filter(Boolean)
+			.join(" ");
 
 		return this.api.get<MessageList>(`${BASE}/messages`, accessToken, {
-			q: `${WORK_MAIL_QUERY} after:${after} before:${before}`,
+			q,
 			maxResults: options.maxResults ?? 100,
 			pageToken: options.pageToken,
+		});
+	}
+
+	/**
+	 * Targeted search for a single contact backfill (not the live incremental
+	 * sync, which never calls this) — reuses listMessages' q= support.
+	 */
+	async searchByParticipant(
+		accessToken: string,
+		options: {
+			email: string;
+			after: Date;
+			before: Date;
+			maxResults?: number;
+		},
+	): Promise<MailboxResult<MessageList>> {
+		return this.listMessages(accessToken, {
+			after: options.after,
+			before: options.before,
+			maxResults: options.maxResults,
+			query: `(from:${options.email} OR to:${options.email})`,
 		});
 	}
 
