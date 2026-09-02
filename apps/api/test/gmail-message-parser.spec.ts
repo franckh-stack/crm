@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import type { GmailMessage } from "../src/google/gmail.client";
-import { parseGmailMessage } from "../src/google/gmail-message-parser";
+import {
+	BULK_MAIL_RECIPIENT_THRESHOLD,
+	parseGmailMessage,
+} from "../src/google/gmail-message-parser";
 
 function messageWith(
 	headers: Record<string, string>,
@@ -98,5 +101,39 @@ describe("parseGmailMessage", () => {
 			{ email: "franck@vigieproc.fr", name: "Franck", kind: "to" },
 			{ email: "assistant@vigieproc.fr", name: "Assistant", kind: "cc" },
 		]);
+	});
+
+	it("returns null when a list-unsubscribe header is present -- a mailing-list broadcast, not personal correspondence", () => {
+		const parsed = parseGmailMessage(
+			messageWith({
+				...BASE_HEADERS,
+				"list-unsubscribe": "<mailto:unsubscribe@club-it.example.com>",
+			}),
+		);
+		expect(parsed).toBeNull();
+	});
+
+	it(`returns null when there are more than ${BULK_MAIL_RECIPIENT_THRESHOLD} recipients -- a broadcast CC list, not personal correspondence`, () => {
+		const manyRecipients = Array.from(
+			{ length: BULK_MAIL_RECIPIENT_THRESHOLD + 1 },
+			(_, i) => `person${i}@example.com`,
+		).join(", ");
+
+		const parsed = parseGmailMessage(
+			messageWith({ ...BASE_HEADERS, to: manyRecipients, cc: "" }),
+		);
+		expect(parsed).toBeNull();
+	});
+
+	it(`still parses a message with exactly ${BULK_MAIL_RECIPIENT_THRESHOLD} recipients -- the threshold is a ceiling, not a trap`, () => {
+		const recipients = Array.from(
+			{ length: BULK_MAIL_RECIPIENT_THRESHOLD },
+			(_, i) => `person${i}@example.com`,
+		).join(", ");
+
+		const parsed = parseGmailMessage(
+			messageWith({ ...BASE_HEADERS, to: recipients, cc: "" }),
+		);
+		expect(parsed).not.toBeNull();
 	});
 });
