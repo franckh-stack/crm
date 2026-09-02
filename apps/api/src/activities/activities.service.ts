@@ -61,12 +61,15 @@ const ENTRY_SELECT = {
 	},
 } as const;
 
-const NOTE_TYPES = [
-	ActivityType.NOTE,
-	ActivityType.CALL,
-	ActivityType.EMAIL,
-	ActivityType.MEETING,
-];
+/**
+ * The "Notes" tab is for what a rep writes down by hand -- not what syncs in
+ * automatically. Email and Meeting each already have their own dedicated
+ * tab; including them here duplicated every synced email/meeting into the
+ * Notes tab as well (found via the real contact-history backfill, WP
+ * crm-enrich 02/09/2026 -- a Gmail/Calendar sync produced 0 notes and 18
+ * entries, all 18 of which nonetheless showed up under "Notes").
+ */
+const NOTE_TYPES = [ActivityType.NOTE, ActivityType.CALL];
 
 @Injectable()
 export class ActivitiesService {
