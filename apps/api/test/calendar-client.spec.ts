@@ -10,7 +10,7 @@ afterEach(() => {
 
 function stubCapturingUrl(): { calls: URL[] } {
 	const calls: URL[] = [];
-	globalThis.fetch = (async (input: RequestInfo | URL) => {
+	globalThis.fetch = (async (input: string | URL | Request) => {
 		calls.push(new URL(input.toString()));
 		return new Response(JSON.stringify({ items: [] }), {
 			status: 200,

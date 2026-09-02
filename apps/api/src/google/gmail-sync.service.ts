@@ -7,23 +7,10 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectDatabase } from "../database/database.constants";
 import type { MatchContext } from "../mailbox/mailbox-match.service";
 import { MailboxTokenService } from "../mailbox/mailbox-token.service";
-import {
-	normaliseMessageId,
-	stripQuotedHistory,
-} from "../mailbox/message-text";
-import { parseAddress, parseAddressList } from "../mailbox/participants";
 import { SyncStateService } from "../mailbox/sync-state.service";
-import {
-	type IncomingMessage,
-	ThreadWriterService,
-} from "../mailbox/thread-writer.service";
-import { GmailClient, type GmailMessage } from "./gmail.client";
-import {
-	type GmailHeader,
-	header,
-	plainTextBody,
-	rootMessageId,
-} from "./gmail-mime";
+import { ThreadWriterService } from "../mailbox/thread-writer.service";
+import { parseGmailMessage } from "./gmail-message-parser";
+import { GmailClient } from "./gmail.client";
 
 const MAX_MESSAGES_PER_TICK = 120;
 
@@ -216,7 +203,7 @@ export class GmailSyncService {
 			const message = await this.gmail.getMessage(accessToken, id);
 			if (message.outcome !== "ok") continue;
 
-			const parsed = this.parse(message.data);
+			const parsed = parseGmailMessage(message.data);
 			if (!parsed) continue;
 
 			const stored = await this.threads.store(
@@ -229,62 +216,6 @@ export class GmailSyncService {
 		}
 
 		return { written, remaining };
-	}
-
-	private parse(message: GmailMessage): IncomingMessage | null {
-		const headers = message.payload?.headers;
-
-		const rawMessageId = header(headers, "message-id");
-		if (!rawMessageId) return null;
-
-		const from = parseAddress(header(headers, "from") ?? "");
-		if (!from) return null;
-
-		const sentAt = this.sentAt(message, headers);
-		if (!sentAt) return null;
-
-		const rootId = rootMessageId(headers) ?? normaliseMessageId(rawMessageId);
-
-		const to = parseAddressList(header(headers, "to")).map((person) => ({
-			email: person.email,
-			name: person.name,
-			kind: "to" as const,
-		}));
-
-		const cc = parseAddressList(header(headers, "cc")).map((person) => ({
-			email: person.email,
-			name: person.name,
-			kind: "cc" as const,
-		}));
-
-		const body = stripQuotedHistory(plainTextBody(message.payload));
-
-		return {
-			rfcMessageId: normaliseMessageId(rawMessageId),
-			rootId,
-			subject: header(headers, "subject"),
-			from,
-			recipients: [...to, ...cc],
-			body,
-			sentAt,
-			gmailMessageId: message.id ?? null,
-		};
-	}
-
-	private sentAt(
-		message: GmailMessage,
-		headers: readonly GmailHeader[] | undefined,
-	): Date | null {
-		if (message.internalDate) {
-			const at = new Date(Number(message.internalDate));
-			if (!Number.isNaN(at.getTime())) return at;
-		}
-
-		const raw = header(headers, "date");
-		if (!raw) return null;
-
-		const at = new Date(raw);
-		return Number.isNaN(at.getTime()) ? null : at;
 	}
 
 	private async handleFailure(
