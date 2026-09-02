@@ -74,18 +74,7 @@ export class CalendarSyncService {
 
 		await this.state.markRunning(row.id);
 
-		const [internal, suppressedDomains, suppressedEmails] = await Promise.all([
-			this.match.internalIdentity(),
-			this.match.suppressedDomains(),
-			this.match.suppressedEmails(),
-		]);
-
-		const context = {
-			ourAddresses: internal.addresses,
-			ourDomains: internal.domains,
-			suppressedDomains,
-			suppressedEmails,
-		};
+		const context = await this.buildContext();
 
 		let pageToken: string | undefined;
 		let syncToken = row.cursor ?? undefined;
@@ -188,10 +177,39 @@ export class CalendarSyncService {
 		};
 	}
 
-	private async apply(
+	/**
+	 * Builds the internal-identity/suppression context apply() and
+	 * backfillForParticipant() need. Public: the contact history backfill
+	 * (and tests exercising apply() directly) build a context without
+	 * running a full sync() tick, the same way ThreadWriterService.context()
+	 * is already public for the equivalent reason on the email side.
+	 */
+	async buildContext(): Promise<MatchContext> {
+		const [internal, suppressedDomains, suppressedEmails] = await Promise.all([
+			this.match.internalIdentity(),
+			this.match.suppressedDomains(),
+			this.match.suppressedEmails(),
+		]);
+
+		return {
+			ourAddresses: internal.addresses,
+			ourDomains: internal.domains,
+			suppressedDomains,
+			suppressedEmails,
+		};
+	}
+
+	/**
+	 * Public so the contact history backfill (and tests) can drive it
+	 * directly with a preresolved company/contact, bypassing match.resolve()
+	 * -- default (preresolved omitted) behavior is unchanged for the live
+	 * incremental sync's own call in sync()/apply() above.
+	 */
+	async apply(
 		event: GoogleEvent,
 		row: MailboxSync,
 		context: MatchContext,
+		preresolved?: { companyId: string | null; contactId: string | null },
 	): Promise<"written" | "removed" | "ignored"> {
 		const iCalUid = event.iCalUID;
 		if (!iCalUid) return "ignored";
@@ -221,23 +239,34 @@ export class CalendarSyncService {
 		const end = eventTime(event.end);
 		if (!start || !end) return "ignored";
 
-		const participants = this.participantsOf(event);
+		let matchedCompanyId: string | null;
+		let matchedContactId: string | null;
 
-		const declinedByUs = event.attendees?.some(
-			(attendee) => attendee.self && attendee.responseStatus === "declined",
-		);
+		if (preresolved) {
+			matchedCompanyId = preresolved.companyId;
+			matchedContactId = preresolved.contactId;
+		} else {
+			const participants = this.participantsOf(event);
 
-		const match = await this.match.resolve(
-			{
-				participants,
-				allowCreate: row.autoCreate && !declinedByUs,
-				source: RecordSource.CALENDAR,
-				ownerId: row.userId,
-			},
-			context,
-		);
+			const declinedByUs = event.attendees?.some(
+				(attendee) => attendee.self && attendee.responseStatus === "declined",
+			);
 
-		if (!match.companyId && !match.contactId) {
+			const match = await this.match.resolve(
+				{
+					participants,
+					allowCreate: row.autoCreate && !declinedByUs,
+					source: RecordSource.CALENDAR,
+					ownerId: row.userId,
+				},
+				context,
+			);
+
+			matchedCompanyId = match.companyId;
+			matchedContactId = match.contactId;
+		}
+
+		if (!matchedCompanyId && !matchedContactId) {
 			return "ignored";
 		}
 
@@ -258,8 +287,8 @@ export class CalendarSyncService {
 				isAllDay: start.isAllDay,
 				status: event.status ?? "confirmed",
 				organizerEmail: organizer,
-				companyId: match.companyId,
-				contactId: match.contactId,
+				companyId: matchedCompanyId,
+				contactId: matchedContactId,
 				syncedByUserId: row.userId,
 				googleEventId: event.id ?? null,
 			},
@@ -273,8 +302,8 @@ export class CalendarSyncService {
 				isAllDay: start.isAllDay,
 				status: event.status ?? "confirmed",
 				organizerEmail: organizer,
-				companyId: match.companyId,
-				contactId: match.contactId,
+				companyId: matchedCompanyId,
+				contactId: matchedContactId,
 			},
 			select: { id: true },
 		});
@@ -284,12 +313,63 @@ export class CalendarSyncService {
 		await this.project(record.id, row.userId, {
 			title: event.summary ?? "Meeting",
 			startsAt: start.at,
-			companyId: match.companyId,
-			contactId: match.contactId,
+			companyId: matchedCompanyId,
+			contactId: matchedContactId,
 			location: event.location ?? null,
 		});
 
 		return "written";
+	}
+
+	/**
+	 * Contact history backfill entry point: search for events involving a
+	 * single known participant and write matches with the contact already
+	 * resolved -- never touches the live sync's cursor/pagination state.
+	 */
+	async backfillForParticipant(input: {
+		userId: string;
+		email: string;
+		companyId: string | null;
+		contactId: string | null;
+		after: Date;
+		before: Date;
+		maxResults: number;
+	}): Promise<{ status: "synced" | "skipped"; written: number; reason?: string }> {
+		const row = await this.state.get(input.userId, "calendar");
+		if (!row) {
+			return {
+				status: "skipped",
+				written: 0,
+				reason: "Calendar is not connected for this user.",
+			};
+		}
+
+		const token = await this.tokens.accessTokenFor(input.userId, "calendar");
+		if (token.outcome !== "ok") {
+			return { status: "skipped", written: 0, reason: token.reason };
+		}
+
+		const context = await this.buildContext();
+		const result = await this.calendar.searchByParticipant(token.accessToken, {
+			email: input.email,
+			timeMin: input.after,
+			timeMax: input.before,
+			maxResults: input.maxResults,
+		});
+		if (result.outcome !== "ok") {
+			return { status: "skipped", written: 0, reason: result.reason };
+		}
+
+		let written = 0;
+		for (const item of result.data.items ?? []) {
+			const applied = await this.apply(item, row, context, {
+				companyId: input.companyId,
+				contactId: input.contactId,
+			});
+			if (applied === "written") written += 1;
+		}
+
+		return { status: "synced", written };
 	}
 
 	private async syncAttendees(
