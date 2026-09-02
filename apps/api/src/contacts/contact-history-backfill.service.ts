@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { CalendarSyncService } from "../google/calendar-sync.service";
-import { parseGmailMessage } from "../google/gmail-message-parser";
 import { GmailClient } from "../google/gmail.client";
+import { parseGmailMessage } from "../google/gmail-message-parser";
 import { MailboxTokenService } from "../mailbox/mailbox-token.service";
 import { SyncStateService } from "../mailbox/sync-state.service";
 import { ThreadWriterService } from "../mailbox/thread-writer.service";

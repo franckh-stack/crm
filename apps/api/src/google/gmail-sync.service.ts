@@ -9,8 +9,8 @@ import type { MatchContext } from "../mailbox/mailbox-match.service";
 import { MailboxTokenService } from "../mailbox/mailbox-token.service";
 import { SyncStateService } from "../mailbox/sync-state.service";
 import { ThreadWriterService } from "../mailbox/thread-writer.service";
-import { parseGmailMessage } from "./gmail-message-parser";
 import { GmailClient } from "./gmail.client";
+import { parseGmailMessage } from "./gmail-message-parser";
 
 const MAX_MESSAGES_PER_TICK = 120;
 

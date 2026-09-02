@@ -1,16 +1,16 @@
-import type { IncomingMessage } from "../mailbox/thread-writer.service";
 import {
 	normaliseMessageId,
 	stripQuotedHistory,
 } from "../mailbox/message-text";
 import { parseAddress, parseAddressList } from "../mailbox/participants";
+import type { IncomingMessage } from "../mailbox/thread-writer.service";
+import type { GmailMessage } from "./gmail.client";
 import {
 	type GmailHeader,
 	header,
 	plainTextBody,
 	rootMessageId,
 } from "./gmail-mime";
-import type { GmailMessage } from "./gmail.client";
 
 /**
  * Extracted verbatim from GmailSyncService's former private parse()/sentAt()
