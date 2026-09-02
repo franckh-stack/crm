@@ -39,6 +39,7 @@ import {
 	resolveOrderBy,
 	splitSentinel,
 } from "../trpc/list-input";
+import { ContactHistoryBackfillService } from "./contact-history-backfill.service";
 import type {
 	ContactBulkCompanyInput,
 	ContactBulkOwnerInput,
@@ -101,6 +102,7 @@ export class ContactsService {
 		private readonly queue: AgentQueueService,
 		private readonly stamp: ActivityStampService,
 		private readonly fields: FieldsService,
+		private readonly history: ContactHistoryBackfillService,
 	) {}
 
 	async list(input: ContactListInput): Promise<ListResult<ContactRow>> {
@@ -260,7 +262,7 @@ export class ContactsService {
 		};
 	}
 
-	async create(input: ContactCreateInput) {
+	async create(input: ContactCreateInput, actorId?: string) {
 		const email = normalizeEmail(input.email ?? "");
 
 		if (email) {
@@ -323,6 +325,25 @@ export class ContactsService {
 		});
 
 		this.logger.log({ message: "Contact created", contactId: contact.id });
+
+		if (actorId && contact.email) {
+			this.history
+				.run({
+					contactId: contact.id,
+					email: contact.email,
+					companyId: contact.companyId,
+					userId: actorId,
+				})
+				.catch((error: Error) => {
+					this.logger.error(
+						{
+							message: "Contact history backfill failed",
+							contactId: contact.id,
+						},
+						error.stack,
+					);
+				});
+		}
 
 		await this.agent.contactCreated(
 			contact.id,
