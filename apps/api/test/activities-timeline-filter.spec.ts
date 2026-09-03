@@ -112,3 +112,77 @@ describe("ActivitiesService.timeline -- notes filter scope", () => {
 		expect(counts.notes).toBe(2);
 	});
 });
+
+describe("ActivitiesService email thread exclusion -- removing noise from the synthesis", () => {
+	let threadId: string;
+
+	beforeAll(async () => {
+		const thread = await db.emailThread.create({
+			data: {
+				rootMessageId: `<exclusion-${suffix}@mail.test>`,
+				subject: "Excludable",
+				contactId,
+				firstMessageAt: new Date("2026-02-01T10:00:00Z"),
+				lastMessageAt: new Date("2026-02-01T10:00:00Z"),
+				messageCount: 1,
+			},
+			select: { id: true },
+		});
+		threadId = thread.id;
+
+		await db.activity.create({
+			data: {
+				type: ActivityType.EMAIL,
+				subject: `An excludable email [${suffix}]`,
+				occurredAt: new Date("2026-02-01T10:00:00Z"),
+				contactId,
+				createdById: userId,
+				emailThreadId: threadId,
+			},
+		});
+	});
+
+	afterAll(async () => {
+		await db.emailThread.deleteMany({ where: { rootMessageId: `<exclusion-${suffix}@mail.test>` } });
+	});
+
+	it("shows up in the timeline before it is excluded", async () => {
+		const result = await service.timeline({ contactId, filter: "email", limit: 30 });
+		expect(result.entries.map((entry) => entry.subject)).toContain(
+			`An excludable email [${suffix}]`,
+		);
+	});
+
+	it("excludeEmailThread hides it from the timeline and every count", async () => {
+		const excluded = await service.excludeEmailThread(threadId);
+		expect(excluded.excludedAt).not.toBeNull();
+
+		const [all, email] = await Promise.all([
+			service.timeline({ contactId, filter: "all", limit: 30 }),
+			service.timeline({ contactId, filter: "email", limit: 30 }),
+		]);
+
+		expect(all.entries.map((entry) => entry.subject)).not.toContain(
+			`An excludable email [${suffix}]`,
+		);
+		expect(email.entries.map((entry) => entry.subject)).not.toContain(
+			`An excludable email [${suffix}]`,
+		);
+	});
+
+	it("restoreEmailThread brings it back", async () => {
+		const restored = await service.restoreEmailThread(threadId);
+		expect(restored.excludedAt).toBeNull();
+
+		const result = await service.timeline({ contactId, filter: "email", limit: 30 });
+		expect(result.entries.map((entry) => entry.subject)).toContain(
+			`An excludable email [${suffix}]`,
+		);
+	});
+
+	it("excluding a thread that does not exist throws NotFoundException", async () => {
+		await expect(service.excludeEmailThread(`missing-${suffix}`)).rejects.toThrow(
+			`No email thread with id missing-${suffix}.`,
+		);
+	});
+});

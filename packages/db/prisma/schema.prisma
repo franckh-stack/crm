@@ -1190,6 +1190,14 @@ model EmailThread {
   lastMessageAt  DateTime
   messageCount   Int      @default(0)
 
+  // Set when a rep removes this thread from the CRM's synthesis (e.g. a
+  // mailing-list broadcast the automated bulk-mail filter didn't catch).
+  // Soft, not a delete: the row (and its rfcMessageId/rootMessageId dedup
+  // keys) stays in place so the live sync never re-imports it, and it can
+  // be un-excluded. Filtered out of relationship counts and the activity
+  // timeline everywhere they read from EmailThread/Activity.
+  excludedAt DateTime?
+
   messages EmailMessage[]
   activity Activity?
 
