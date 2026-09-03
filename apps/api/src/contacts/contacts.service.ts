@@ -634,12 +634,15 @@ export class ContactsService {
 		const [threads, lastReply, meetings, nextMeeting, colleagues] =
 			await Promise.all([
 				this.db.emailThread.aggregate({
-					where: { contactId },
+					where: { contactId, excludedAt: null },
 					_sum: { messageCount: true },
 					_count: { _all: true },
 				}),
 				this.db.emailMessage.findFirst({
-					where: { thread: { contactId }, direction: "INBOUND" },
+					where: {
+						thread: { contactId, excludedAt: null },
+						direction: "INBOUND",
+					},
 					orderBy: { sentAt: "desc" },
 					select: { sentAt: true },
 				}),

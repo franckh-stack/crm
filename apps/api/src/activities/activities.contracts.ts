@@ -82,6 +82,15 @@ export const completeInput = z.object({
 	completed: z.boolean().default(true),
 });
 
+export const emailThreadExclusionInput = z.object({
+	threadId: z.string(),
+});
+
+export const emailThreadExclusionOutput = z.object({
+	id: z.string(),
+	excludedAt: z.string().nullable(),
+});
+
 export const myTasksInput = z.object({
 	window: z.enum(["overdue", "upcoming", "all"]).default("all"),
 	limit: z.number().int().min(1).max(100).default(25),

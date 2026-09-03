@@ -71,6 +71,19 @@ const ENTRY_SELECT = {
  */
 const NOTE_TYPES = [ActivityType.NOTE, ActivityType.CALL];
 
+/**
+ * A rep can exclude an individual email thread from the CRM's synthesis
+ * (e.g. a mailing-list broadcast the automated bulk-mail filter didn't
+ * catch, cf. gmail-message-parser.ts). Excluding is soft -- the row stays
+ * so the live sync's rfcMessageId/rootMessageId dedup keys keep the thread
+ * from being re-imported -- so every read of the timeline has to respect
+ * it. Activities not tied to an email thread (notes, calls, meetings,
+ * tasks...) are untouched.
+ */
+const VISIBLE_EMAIL_THREAD: Prisma.ActivityWhereInput = {
+	OR: [{ emailThreadId: null }, { emailThread: { excludedAt: null } }],
+};
+
 @Injectable()
 export class ActivitiesService {
 	private readonly logger = new Logger(ActivitiesService.name);
@@ -82,7 +95,7 @@ export class ActivitiesService {
 
 	async timeline(input: TimelineInput): Promise<TimelineResult> {
 		const where = this.anchor(input);
-		Object.assign(where, filterClause(input.filter));
+		Object.assign(where, filterClause(input.filter), VISIBLE_EMAIL_THREAD);
 
 		const rows = await this.db.activity.findMany({
 			where,
@@ -111,19 +124,21 @@ export class ActivitiesService {
 		const anchor = this.anchor(input);
 
 		const [all, notes, upcoming, done, email, meetings] = await Promise.all([
-			this.db.activity.count({ where: anchor }),
+			this.db.activity.count({ where: { ...anchor, ...VISIBLE_EMAIL_THREAD } }),
 			this.db.activity.count({
-				where: { ...anchor, ...filterClause("notes") },
+				where: { ...anchor, ...filterClause("notes"), ...VISIBLE_EMAIL_THREAD },
 			}),
 			this.db.activity.count({
-				where: { ...anchor, ...filterClause("upcoming") },
-			}),
-			this.db.activity.count({ where: { ...anchor, ...filterClause("done") } }),
-			this.db.activity.count({
-				where: { ...anchor, ...filterClause("email") },
+				where: { ...anchor, ...filterClause("upcoming"), ...VISIBLE_EMAIL_THREAD },
 			}),
 			this.db.activity.count({
-				where: { ...anchor, ...filterClause("meetings") },
+				where: { ...anchor, ...filterClause("done"), ...VISIBLE_EMAIL_THREAD },
+			}),
+			this.db.activity.count({
+				where: { ...anchor, ...filterClause("email"), ...VISIBLE_EMAIL_THREAD },
+			}),
+			this.db.activity.count({
+				where: { ...anchor, ...filterClause("meetings"), ...VISIBLE_EMAIL_THREAD },
 			}),
 		]);
 
@@ -188,6 +203,46 @@ export class ActivitiesService {
 		});
 
 		return serializeEntry(updated);
+	}
+
+	async excludeEmailThread(threadId: string): Promise<{ id: string; excludedAt: string | null }> {
+		const thread = await this.db.emailThread.findUnique({
+			where: { id: threadId },
+			select: { id: true },
+		});
+		if (!thread) {
+			throw new NotFoundException(`No email thread with id ${threadId}.`);
+		}
+
+		const updated = await this.db.emailThread.update({
+			where: { id: threadId },
+			data: { excludedAt: new Date() },
+			select: { id: true, excludedAt: true },
+		});
+
+		this.logger.log({ message: "Email thread excluded from synthesis", threadId });
+
+		return { id: updated.id, excludedAt: updated.excludedAt?.toISOString() ?? null };
+	}
+
+	async restoreEmailThread(threadId: string): Promise<{ id: string; excludedAt: string | null }> {
+		const thread = await this.db.emailThread.findUnique({
+			where: { id: threadId },
+			select: { id: true },
+		});
+		if (!thread) {
+			throw new NotFoundException(`No email thread with id ${threadId}.`);
+		}
+
+		const updated = await this.db.emailThread.update({
+			where: { id: threadId },
+			data: { excludedAt: null },
+			select: { id: true, excludedAt: true },
+		});
+
+		this.logger.log({ message: "Email thread restored to synthesis", threadId });
+
+		return { id: updated.id, excludedAt: updated.excludedAt?.toISOString() ?? null };
 	}
 
 	async myTasks(
