@@ -198,6 +198,7 @@ export const companyDetailOutput = z.object({
 	githubUrl: z.string().nullable(),
 	pricingUrl: z.string().nullable(),
 	careersUrl: z.string().nullable(),
+	siren: z.string().nullable(),
 	enrichmentStatus: companyEnrichmentStatus,
 	enrichmentError: z.string().nullable(),
 	source: companyRecordSource,
@@ -255,3 +256,47 @@ export const companySetPrimaryContactOutput = z.object({
 	id: z.string(),
 	primaryContactId: z.string().nullable(),
 });
+
+export const companySirenResolveInput = z.object({
+	id: z.string(),
+});
+
+const sirenCandidateOutput = z.object({
+	siren: z.string(),
+	siret: z.string().nullable(),
+	nameCanonicalFull: z.string(),
+	legalFormLabel: z.string().nullable(),
+	nafCode: z.string().nullable(),
+	nafLabel: z.string().nullable(),
+	city: z.string().nullable(),
+	department: z.string().nullable(),
+	confidence: z.enum(["exact", "ambiguous", "weak"]),
+	matchedOn: z.string().nullable(),
+});
+
+export type SirenCandidateOutput = z.infer<typeof sirenCandidateOutput>;
+
+export const companySirenResolveOutput = z.discriminatedUnion("outcome", [
+	z.object({ outcome: z.literal("not-configured") }),
+	z.object({ outcome: z.literal("unauthorized"), reason: z.string() }),
+	z.object({ outcome: z.literal("failed"), reason: z.string() }),
+	z.object({
+		outcome: z.literal("ok"),
+		candidates: z.array(sirenCandidateOutput),
+	}),
+]);
+
+export const companySetSirenInput = z.object({
+	id: z.string(),
+	siren: z.string().length(9, "A SIREN is 9 digits."),
+});
+
+export const companySetSirenOutput = z.discriminatedUnion("outcome", [
+	z.object({ outcome: z.literal("ok"), id: z.string(), siren: z.string() }),
+	z.object({
+		outcome: z.literal("conflict"),
+		reason: z.string(),
+		conflictingCompanyId: z.string(),
+		conflictingCompanyName: z.string(),
+	}),
+]);
