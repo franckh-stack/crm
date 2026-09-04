@@ -23,6 +23,11 @@ import { GoogleSyncService } from "./google-sync.service";
 		ConversationService,
 		GoogleRouter,
 	],
-	exports: [GoogleSyncService, GoogleConnectionService, CalendarSyncService, GmailClient],
+	exports: [
+		GoogleSyncService,
+		GoogleConnectionService,
+		CalendarSyncService,
+		GmailClient,
+	],
 })
 export class GoogleModule {}

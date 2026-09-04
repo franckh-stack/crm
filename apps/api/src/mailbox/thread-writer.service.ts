@@ -77,7 +77,10 @@ export class ThreadWriterService {
 			},
 		});
 		if (existing?.thread.activity) {
-			if (preresolved?.contactId && this.canRelink(existing.thread, preresolved)) {
+			if (
+				preresolved?.contactId &&
+				this.canRelink(existing.thread, preresolved)
+			) {
 				await this.relink(existing.threadId, preresolved);
 			}
 			return false;
@@ -259,7 +262,9 @@ export class ThreadWriterService {
 		preresolved: { companyId: string | null; contactId: string | null },
 	): boolean {
 		if (thread.contactId !== null) return false;
-		return thread.companyId === null || thread.companyId === preresolved.companyId;
+		return (
+			thread.companyId === null || thread.companyId === preresolved.companyId
+		);
 	}
 
 	private async relink(

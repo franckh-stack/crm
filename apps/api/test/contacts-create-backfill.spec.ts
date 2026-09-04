@@ -24,14 +24,25 @@ const queue = new AgentQueueService(db);
 const directory = new CompanyDirectoryService(agent);
 const fields = new FieldsService(db, agent);
 
-type RunCall = { contactId: string; email: string; companyId: string | null; userId: string };
+type RunCall = {
+	contactId: string;
+	email: string;
+	companyId: string | null;
+	userId: string;
+};
 
-function historyStub(options: { calls: RunCall[]; rejects?: boolean }): ContactHistoryBackfillService {
+function historyStub(options: {
+	calls: RunCall[];
+	rejects?: boolean;
+}): ContactHistoryBackfillService {
 	return {
 		run: async (input: RunCall) => {
 			options.calls.push(input);
 			if (options.rejects) throw new Error("history backfill exploded");
-			return { gmail: { status: "skipped", written: 0 }, calendar: { status: "skipped", written: 0 } };
+			return {
+				gmail: { status: "skipped", written: 0 },
+				calendar: { status: "skipped", written: 0 },
+			};
 		},
 	} as unknown as ContactHistoryBackfillService;
 }
@@ -88,7 +99,10 @@ describe("ContactsService.create() triggers the history backfill", () => {
 			historyStub({ calls }),
 		);
 
-		await contacts.create({ firstName: "NoActor", email: `no-actor@${domain}` });
+		await contacts.create({
+			firstName: "NoActor",
+			email: `no-actor@${domain}`,
+		});
 
 		expect(calls).toHaveLength(0);
 	});

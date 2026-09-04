@@ -13,7 +13,9 @@ const service = new ActivitiesService(db, stamp);
 let contactId: string;
 
 async function clean() {
-	await db.activity.deleteMany({ where: { subject: { endsWith: `[${suffix}]` } } });
+	await db.activity.deleteMany({
+		where: { subject: { endsWith: `[${suffix}]` } },
+	});
 	await db.contact.deleteMany({ where: { email: { endsWith: `@${domain}` } } });
 	await db.company.deleteMany({ where: { domain } });
 	await db.user.deleteMany({ where: { id: userId } });
@@ -34,7 +36,9 @@ async function seed(type: ActivityType, subjectPrefix: string) {
 beforeAll(async () => {
 	await clean();
 
-	await db.user.create({ data: { id: userId, name: "Test Rep", email: `rep@${domain}` } });
+	await db.user.create({
+		data: { id: userId, name: "Test Rep", email: `rep@${domain}` },
+	});
 
 	const company = await db.company.create({
 		data: { name: "Timeline Filter Co", domain },
@@ -101,7 +105,11 @@ describe("ActivitiesService.timeline -- notes filter scope", () => {
 	});
 
 	it("the all tab still shows everything", async () => {
-		const result = await service.timeline({ contactId, filter: "all", limit: 30 });
+		const result = await service.timeline({
+			contactId,
+			filter: "all",
+			limit: 30,
+		});
 
 		expect(result.entries.length).toBe(4);
 	});
@@ -143,11 +151,17 @@ describe("ActivitiesService email thread exclusion -- removing noise from the sy
 	});
 
 	afterAll(async () => {
-		await db.emailThread.deleteMany({ where: { rootMessageId: `<exclusion-${suffix}@mail.test>` } });
+		await db.emailThread.deleteMany({
+			where: { rootMessageId: `<exclusion-${suffix}@mail.test>` },
+		});
 	});
 
 	it("shows up in the timeline before it is excluded", async () => {
-		const result = await service.timeline({ contactId, filter: "email", limit: 30 });
+		const result = await service.timeline({
+			contactId,
+			filter: "email",
+			limit: 30,
+		});
 		expect(result.entries.map((entry) => entry.subject)).toContain(
 			`An excludable email [${suffix}]`,
 		);
@@ -174,15 +188,19 @@ describe("ActivitiesService email thread exclusion -- removing noise from the sy
 		const restored = await service.restoreEmailThread(threadId);
 		expect(restored.excludedAt).toBeNull();
 
-		const result = await service.timeline({ contactId, filter: "email", limit: 30 });
+		const result = await service.timeline({
+			contactId,
+			filter: "email",
+			limit: 30,
+		});
 		expect(result.entries.map((entry) => entry.subject)).toContain(
 			`An excludable email [${suffix}]`,
 		);
 	});
 
 	it("excluding a thread that does not exist throws NotFoundException", async () => {
-		await expect(service.excludeEmailThread(`missing-${suffix}`)).rejects.toThrow(
-			`No email thread with id missing-${suffix}.`,
-		);
+		await expect(
+			service.excludeEmailThread(`missing-${suffix}`),
+		).rejects.toThrow(`No email thread with id missing-${suffix}.`);
 	});
 });

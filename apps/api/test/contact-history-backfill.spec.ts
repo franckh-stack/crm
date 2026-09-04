@@ -10,9 +10,16 @@ import {
 } from "../src/contacts/contact-history-backfill.service";
 import { ActivityStampService } from "../src/crm/activity-stamp.service";
 import { EnrichmentLogService } from "../src/crm/enrichment-log.service";
+import type {
+	CalendarClient,
+	GoogleEvent,
+} from "../src/google/calendar.client";
 import { CalendarSyncService } from "../src/google/calendar-sync.service";
-import type { CalendarClient, GoogleEvent } from "../src/google/calendar.client";
-import type { GmailClient, GmailMessage, MessageList } from "../src/google/gmail.client";
+import type {
+	GmailClient,
+	GmailMessage,
+	MessageList,
+} from "../src/google/gmail.client";
 import { MailboxMatchService } from "../src/mailbox/mailbox-match.service";
 import type {
 	MailboxTokenService,
@@ -57,7 +64,9 @@ function gmailMessage(rfcId: string, from: string, sentAt: Date): GmailMessage {
 }
 
 type GmailStubOptions = {
-	profile?: { outcome: "ok"; data: { emailAddress: string } } | { outcome: "failed"; reason: string; retryable: boolean };
+	profile?:
+		| { outcome: "ok"; data: { emailAddress: string } }
+		| { outcome: "failed"; reason: string; retryable: boolean };
 	searchIds?: string[];
 	messages?: Record<string, GmailMessage>;
 	searchThrows?: boolean;
@@ -67,7 +76,10 @@ type GmailStubOptions = {
 function gmailStub(options: GmailStubOptions): GmailClient {
 	return {
 		profile: async () =>
-			options.profile ?? { outcome: "ok", data: { emailAddress: "rep@example.test" } },
+			options.profile ?? {
+				outcome: "ok",
+				data: { emailAddress: "rep@example.test" },
+			},
 		searchByParticipant: async (
 			_token: string,
 			args: { email: string; after: Date; before: Date; maxResults?: number },
@@ -97,8 +109,10 @@ function tokenStub(
 	calendar: TokenResult = { outcome: "ok", accessToken: "cal-token" },
 ): MailboxTokenService {
 	return {
-		accessTokenFor: async (_userId: string, source: "gmail" | "calendar" | "outlook") =>
-			source === "gmail" ? gmail : calendar,
+		accessTokenFor: async (
+			_userId: string,
+			source: "gmail" | "calendar" | "outlook",
+		) => (source === "gmail" ? gmail : calendar),
 	} as unknown as MailboxTokenService;
 }
 
@@ -109,7 +123,12 @@ function calendarClientStub(
 	return {
 		searchByParticipant: async (
 			_token: string,
-			args: { email: string; timeMin: Date; timeMax: Date; maxResults?: number },
+			args: {
+				email: string;
+				timeMin: Date;
+				timeMax: Date;
+				maxResults?: number;
+			},
 		) => {
 			if (captured) {
 				captured.maxResults = args.maxResults;
@@ -121,7 +140,11 @@ function calendarClientStub(
 	} as unknown as CalendarClient;
 }
 
-function calendarEvent(iCalUid: string, organizerEmail: string, startsAt: Date): GoogleEvent {
+function calendarEvent(
+	iCalUid: string,
+	organizerEmail: string,
+	startsAt: Date,
+): GoogleEvent {
 	return {
 		id: `gcal-${iCalUid}`,
 		iCalUID: iCalUid,
@@ -134,7 +157,11 @@ function calendarEvent(iCalUid: string, organizerEmail: string, startsAt: Date):
 	};
 }
 
-function service(gmail: GmailClient, tokens: MailboxTokenService, calendar: CalendarClient) {
+function service(
+	gmail: GmailClient,
+	tokens: MailboxTokenService,
+	calendar: CalendarClient,
+) {
 	const calendarSync = new CalendarSyncService(
 		db,
 		calendar,
@@ -144,7 +171,13 @@ function service(gmail: GmailClient, tokens: MailboxTokenService, calendar: Cale
 		stamp,
 		agent,
 	);
-	return new ContactHistoryBackfillService(gmail, tokens, state, threads, calendarSync);
+	return new ContactHistoryBackfillService(
+		gmail,
+		tokens,
+		state,
+		threads,
+		calendarSync,
+	);
 }
 
 let companyId: string;
@@ -153,17 +186,29 @@ let contactEmail: string;
 let userId: string;
 
 async function newUserWithSync(id: string): Promise<void> {
-	await db.user.create({ data: { id, name: "Test Rep", email: `${id}@example.test` } });
-	await db.mailboxSync.create({ data: { userId: id, source: "gmail", autoCreate: false } });
-	await db.mailboxSync.create({ data: { userId: id, source: "calendar", autoCreate: false } });
+	await db.user.create({
+		data: { id, name: "Test Rep", email: `${id}@example.test` },
+	});
+	await db.mailboxSync.create({
+		data: { userId: id, source: "gmail", autoCreate: false },
+	});
+	await db.mailboxSync.create({
+		data: { userId: id, source: "calendar", autoCreate: false },
+	});
 }
 
 async function clean() {
-	await db.calendarEvent.deleteMany({ where: { syncedByUserId: { startsWith: `user-${suffix}` } } });
-	await db.emailThread.deleteMany({ where: { rootMessageId: { contains: suffix } } });
+	await db.calendarEvent.deleteMany({
+		where: { syncedByUserId: { startsWith: `user-${suffix}` } },
+	});
+	await db.emailThread.deleteMany({
+		where: { rootMessageId: { contains: suffix } },
+	});
 	await db.contact.deleteMany({ where: { email: { endsWith: `@${domain}` } } });
 	await db.company.deleteMany({ where: { domain } });
-	await db.mailboxSync.deleteMany({ where: { userId: { startsWith: `user-${suffix}` } } });
+	await db.mailboxSync.deleteMany({
+		where: { userId: { startsWith: `user-${suffix}` } },
+	});
 	await db.user.deleteMany({ where: { id: { startsWith: `user-${suffix}` } } });
 }
 
@@ -176,7 +221,12 @@ beforeAll(async () => {
 	companyId = company.id;
 	contactEmail = `target@${domain}`;
 	const contact = await db.contact.create({
-		data: { firstName: "Target", lastName: "Contact", email: contactEmail, companyId },
+		data: {
+			firstName: "Target",
+			lastName: "Contact",
+			email: contactEmail,
+			companyId,
+		},
 		select: { id: true },
 	});
 	contactId = contact.id;
@@ -189,16 +239,32 @@ afterAll(clean);
 describe("ContactHistoryBackfillService.run()", () => {
 	it("writes matching Gmail and Calendar history for the contact", async () => {
 		const rfcId = `history-happy-${suffix}@mail.test`;
-		const message = gmailMessage(rfcId, `sender@${senderDomain}`, new Date("2026-02-01T10:00:00Z"));
+		const message = gmailMessage(
+			rfcId,
+			`sender@${senderDomain}`,
+			new Date("2026-02-01T10:00:00Z"),
+		);
 		const svc = service(
-			gmailStub({ searchIds: [message.id as string], messages: { [message.id as string]: message } }),
+			gmailStub({
+				searchIds: [message.id as string],
+				messages: { [message.id as string]: message },
+			}),
 			tokenStub({ outcome: "ok", accessToken: "gmail-token" }),
 			calendarClientStub([
-				calendarEvent(`ical-happy-${suffix}`, `organizer@${senderDomain}`, new Date("2026-02-02T10:00:00Z")),
+				calendarEvent(
+					`ical-happy-${suffix}`,
+					`organizer@${senderDomain}`,
+					new Date("2026-02-02T10:00:00Z"),
+				),
 			]),
 		);
 
-		const result = await svc.run({ contactId, email: contactEmail, companyId, userId });
+		const result = await svc.run({
+			contactId,
+			email: contactEmail,
+			companyId,
+			userId,
+		});
 
 		expect(result.gmail).toEqual({ status: "synced", written: 1 });
 		expect(result.calendar).toEqual({ status: "synced", written: 1 });
@@ -258,7 +324,10 @@ describe("ContactHistoryBackfillService.run()", () => {
 
 		const message = gmailMessage(rfcId, `sender@${senderDomain}`, sentAt);
 		const svc = service(
-			gmailStub({ searchIds: [message.id as string], messages: { [message.id as string]: message } }),
+			gmailStub({
+				searchIds: [message.id as string],
+				messages: { [message.id as string]: message },
+			}),
 			tokenStub({ outcome: "ok", accessToken: "gmail-token" }),
 			calendarClientStub([]),
 		);
@@ -277,11 +346,20 @@ describe("ContactHistoryBackfillService.run()", () => {
 			gmailStub({}),
 			tokenStub({ outcome: "needs-reconnect", reason: "expired" }),
 			calendarClientStub([
-				calendarEvent(`ical-gmailskip-${suffix}`, `organizer@${senderDomain}`, new Date("2026-02-04T10:00:00Z")),
+				calendarEvent(
+					`ical-gmailskip-${suffix}`,
+					`organizer@${senderDomain}`,
+					new Date("2026-02-04T10:00:00Z"),
+				),
 			]),
 		);
 
-		const result = await svc.run({ contactId, email: contactEmail, companyId, userId });
+		const result = await svc.run({
+			contactId,
+			email: contactEmail,
+			companyId,
+			userId,
+		});
 
 		expect(result.gmail.status).toBe("skipped");
 		expect(result.calendar).toEqual({ status: "synced", written: 1 });
@@ -289,9 +367,16 @@ describe("ContactHistoryBackfillService.run()", () => {
 
 	it("skips Calendar but still attempts Gmail when the Calendar token needs reconnect", async () => {
 		const rfcId = `history-calskip-${suffix}@mail.test`;
-		const message = gmailMessage(rfcId, `sender@${senderDomain}`, new Date("2026-02-05T10:00:00Z"));
+		const message = gmailMessage(
+			rfcId,
+			`sender@${senderDomain}`,
+			new Date("2026-02-05T10:00:00Z"),
+		);
 		const svc = service(
-			gmailStub({ searchIds: [message.id as string], messages: { [message.id as string]: message } }),
+			gmailStub({
+				searchIds: [message.id as string],
+				messages: { [message.id as string]: message },
+			}),
 			tokenStub(
 				{ outcome: "ok", accessToken: "gmail-token" },
 				{ outcome: "needs-reconnect", reason: "expired" },
@@ -299,7 +384,12 @@ describe("ContactHistoryBackfillService.run()", () => {
 			calendarClientStub([]),
 		);
 
-		const result = await svc.run({ contactId, email: contactEmail, companyId, userId });
+		const result = await svc.run({
+			contactId,
+			email: contactEmail,
+			companyId,
+			userId,
+		});
 
 		expect(result.gmail).toEqual({ status: "synced", written: 1 });
 		expect(result.calendar.status).toBe("skipped");
@@ -307,11 +397,26 @@ describe("ContactHistoryBackfillService.run()", () => {
 
 	it("skips a source silently when it was never connected (no MailboxSync row)", async () => {
 		const bareUserId = `user-${suffix}-bare`;
-		await db.user.create({ data: { id: bareUserId, name: "Bare", email: `${bareUserId}@example.test` } });
+		await db.user.create({
+			data: {
+				id: bareUserId,
+				name: "Bare",
+				email: `${bareUserId}@example.test`,
+			},
+		});
 
-		const svc = service(gmailStub({}), tokenStub({ outcome: "ok", accessToken: "unused" }), calendarClientStub([]));
+		const svc = service(
+			gmailStub({}),
+			tokenStub({ outcome: "ok", accessToken: "unused" }),
+			calendarClientStub([]),
+		);
 
-		const result = await svc.run({ contactId, email: contactEmail, companyId, userId: bareUserId });
+		const result = await svc.run({
+			contactId,
+			email: contactEmail,
+			companyId,
+			userId: bareUserId,
+		});
 
 		expect(result.gmail.status).toBe("skipped");
 		expect(result.calendar.status).toBe("skipped");
@@ -365,12 +470,20 @@ describe("ContactHistoryBackfillService.run()", () => {
 
 		const message = gmailMessage(rfcId, `sender@${senderDomain}`, sentAt);
 		const svc = service(
-			gmailStub({ searchIds: [message.id as string], messages: { [message.id as string]: message } }),
+			gmailStub({
+				searchIds: [message.id as string],
+				messages: { [message.id as string]: message },
+			}),
 			tokenStub({ outcome: "ok", accessToken: "gmail-token" }),
 			calendarClientStub([]),
 		);
 
-		const result = await svc.run({ contactId, email: contactEmail, companyId, userId });
+		const result = await svc.run({
+			contactId,
+			email: contactEmail,
+			companyId,
+			userId,
+		});
 
 		expect(result.gmail).toEqual({ status: "synced", written: 0 });
 		expect(
@@ -408,7 +521,9 @@ describe("ContactHistoryBackfillService.run()", () => {
 		expectedAfter.setMonth(expectedAfter.getMonth() - BACKFILL_WINDOW_MONTHS);
 
 		const actualAfter = new Date(calendarCaptured.timeMin as string).getTime();
-		expect(Math.abs(actualAfter - expectedAfter.getTime())).toBeLessThan(60_000);
+		expect(Math.abs(actualAfter - expectedAfter.getTime())).toBeLessThan(
+			60_000,
+		);
 	});
 
 	it("stays resilient when the Gmail search throws -- Calendar still completes", async () => {
@@ -416,11 +531,20 @@ describe("ContactHistoryBackfillService.run()", () => {
 			gmailStub({ searchThrows: true }),
 			tokenStub({ outcome: "ok", accessToken: "gmail-token" }),
 			calendarClientStub([
-				calendarEvent(`ical-resilience-${suffix}`, `organizer@${senderDomain}`, new Date("2026-02-07T10:00:00Z")),
+				calendarEvent(
+					`ical-resilience-${suffix}`,
+					`organizer@${senderDomain}`,
+					new Date("2026-02-07T10:00:00Z"),
+				),
 			]),
 		);
 
-		const result = await svc.run({ contactId, email: contactEmail, companyId, userId });
+		const result = await svc.run({
+			contactId,
+			email: contactEmail,
+			companyId,
+			userId,
+		});
 
 		expect(result.gmail.status).toBe("skipped");
 		expect(result.calendar).toEqual({ status: "synced", written: 1 });

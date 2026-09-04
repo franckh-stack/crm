@@ -54,9 +54,13 @@ export class ContactHistoryBackfillService {
 		};
 
 		const [gmail, calendar] = await Promise.all([
-			this.backfillGmail(input.userId, input.email, after, before, preresolved).catch(
-				(error: unknown) => this.failed("gmail", input.contactId, error),
-			),
+			this.backfillGmail(
+				input.userId,
+				input.email,
+				after,
+				before,
+				preresolved,
+			).catch((error: unknown) => this.failed("gmail", input.contactId, error)),
 			this.calendarSync
 				.backfillForParticipant({
 					userId: input.userId,
@@ -67,7 +71,9 @@ export class ContactHistoryBackfillService {
 					before,
 					maxResults: BACKFILL_CALENDAR_MAX_RESULTS,
 				})
-				.catch((error: unknown) => this.failed("calendar", input.contactId, error)),
+				.catch((error: unknown) =>
+					this.failed("calendar", input.contactId, error),
+				),
 		]);
 
 		return { gmail, calendar };
