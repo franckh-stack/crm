@@ -298,6 +298,13 @@ model Company {
   country     String?
   countryCode String?
 
+  // Identifiant SIRENE (France) -- rapproche la fiche du referentiel
+  // legal_entities/companies cote VigieProcure. Nullable : la plupart des
+  // fiches n'ont pas encore ete resolues (rapprochement manuel ou via
+  // GET /api/v1/companies/resolve cote api_v2), et les comptes non
+  // francais n'en auront jamais.
+  siren String? @db.Char(9)
+
   phone       String?
   email       String?
   linkedinUrl String?
@@ -332,6 +339,7 @@ model Company {
   updatedAt      DateTime            @updatedAt
 
   @@unique([domain], map: "company_domain_active_key", where: { archivedAt: null })
+  @@unique([siren], map: "company_siren_key", where: { archivedAt: null })
   @@index([ownerId])
   @@index([name])
   @@index([lastActivityAt])
