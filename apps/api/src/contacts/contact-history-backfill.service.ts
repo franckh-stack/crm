@@ -60,7 +60,7 @@ export class ContactHistoryBackfillService {
 				after,
 				before,
 				preresolved,
-			).catch((error: unknown) => this.failed("gmail", input.contactId, error)),
+			).catch((cause) => this.failed("gmail", input.contactId, cause)),
 			this.calendarSync
 				.backfillForParticipant({
 					userId: input.userId,
@@ -71,9 +71,7 @@ export class ContactHistoryBackfillService {
 					before,
 					maxResults: BACKFILL_CALENDAR_MAX_RESULTS,
 				})
-				.catch((error: unknown) =>
-					this.failed("calendar", input.contactId, error),
-				),
+				.catch((cause) => this.failed("calendar", input.contactId, cause)),
 		]);
 
 		return { gmail, calendar };
@@ -152,12 +150,12 @@ export class ContactHistoryBackfillService {
 	private failed(
 		source: "gmail" | "calendar",
 		contactId: string,
-		error: unknown,
+		cause: unknown,
 	): SourceOutcome {
-		const reason = error instanceof Error ? error.message : String(error);
+		const reason = cause instanceof Error ? cause.message : String(cause);
 		this.logger.error(
 			{ message: "Contact history backfill source failed", source, contactId },
-			error instanceof Error ? error.stack : undefined,
+			cause instanceof Error ? cause.stack : undefined,
 		);
 		return { status: "skipped", written: 0, reason };
 	}
