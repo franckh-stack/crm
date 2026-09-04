@@ -777,8 +777,6 @@ export class CompaniesService {
 					reason: conflicting
 						? `Ce SIREN est deja rattache a la fiche ${conflicting.name}.`
 						: "Ce SIREN est deja rattache a une autre fiche.",
-					conflictingCompanyId: conflicting?.id ?? "",
-					conflictingCompanyName: conflicting?.name ?? "Another company",
 				};
 			}
 			throw this.translate(cause, id);
