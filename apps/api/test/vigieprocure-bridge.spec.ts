@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import type { Prisma } from "@crm/db";
 import {
 	envoyerEvenementVigieProcure,
 	vigieProcureBridge,
@@ -50,7 +51,7 @@ describe("vigieProcureBridge", () => {
 
 describe("envoyerEvenementVigieProcure", () => {
 	it("returns false silently when no bridge is configured -- best effort, never throws", async () => {
-		const logged: Record<string, unknown>[] = [];
+		const logged: Prisma.InputJsonObject[] = [];
 		const result = await envoyerEvenementVigieProcure(
 			{ eventId: "task-1", kind: "deal.stage.changed", payload: {} },
 			{ debug: (obj) => logged.push(obj) },

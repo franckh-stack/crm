@@ -1,3 +1,5 @@
+import type { Prisma } from "@crm/db";
+
 const HEADER_SIGNATURE = "X-VigieProcure-Signature";
 
 export interface VigieProcureBridge {
@@ -37,7 +39,7 @@ async function hmacSha256Hex(secret: string, data: string): Promise<string> {
 export type VigieProcureEvent = {
 	eventId: string;
 	kind: string;
-	payload: Record<string, unknown>;
+	payload: Prisma.InputJsonValue;
 };
 
 /**
@@ -49,7 +51,7 @@ export type VigieProcureEvent = {
  */
 export async function envoyerEvenementVigieProcure(
 	event: VigieProcureEvent,
-	logger: { debug: (obj: Record<string, unknown>) => void },
+	logger: { debug: (obj: Prisma.InputJsonObject) => void },
 ): Promise<boolean> {
 	const target = vigieProcureBridge();
 	if (!target) return false;
