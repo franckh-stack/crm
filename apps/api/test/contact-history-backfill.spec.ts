@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { db, type MailboxSyncModel as MailboxSync } from "@crm/db";
+import { db } from "@crm/db";
 import type { AgentTriggerService } from "../src/agent/agent-trigger.service";
 import { CompanyDirectoryService } from "../src/companies/company-directory.service";
 import {
@@ -492,8 +492,8 @@ describe("ContactHistoryBackfillService.run()", () => {
 	});
 
 	it("respects the Gmail and Calendar result caps", async () => {
-		const gmailCaptured: { maxResults?: number } = {};
-		const calendarCaptured: { maxResults?: number } = {};
+		const gmailCaptured: GmailStubOptions["captured"] = {};
+		const calendarCaptured: Parameters<typeof calendarClientStub>[1] = {};
 		const svc = service(
 			gmailStub({ captured: gmailCaptured }),
 			tokenStub({ outcome: "ok", accessToken: "gmail-token" }),
@@ -507,7 +507,7 @@ describe("ContactHistoryBackfillService.run()", () => {
 	});
 
 	it("searches roughly the last BACKFILL_WINDOW_MONTHS months", async () => {
-		const calendarCaptured: { timeMin?: string } = {};
+		const calendarCaptured: Parameters<typeof calendarClientStub>[1] = {};
 		const svc = service(
 			gmailStub({}),
 			tokenStub({ outcome: "ok", accessToken: "gmail-token" }),
