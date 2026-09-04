@@ -288,9 +288,7 @@ export const companySirenResolveOutput = z.discriminatedUnion("outcome", [
 
 export const companySetSirenInput = z.object({
 	id: z.string(),
-	siren: z
-		.string()
-		.regex(/^\d{9}$/, "A SIREN is 9 digits."),
+	siren: z.string().regex(/^\d{9}$/, "A SIREN is 9 digits."),
 });
 
 export const companySetSirenOutput = z.discriminatedUnion("outcome", [
