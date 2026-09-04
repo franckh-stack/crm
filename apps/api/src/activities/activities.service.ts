@@ -129,7 +129,11 @@ export class ActivitiesService {
 				where: { ...anchor, ...filterClause("notes"), ...VISIBLE_EMAIL_THREAD },
 			}),
 			this.db.activity.count({
-				where: { ...anchor, ...filterClause("upcoming"), ...VISIBLE_EMAIL_THREAD },
+				where: {
+					...anchor,
+					...filterClause("upcoming"),
+					...VISIBLE_EMAIL_THREAD,
+				},
 			}),
 			this.db.activity.count({
 				where: { ...anchor, ...filterClause("done"), ...VISIBLE_EMAIL_THREAD },
@@ -138,7 +142,11 @@ export class ActivitiesService {
 				where: { ...anchor, ...filterClause("email"), ...VISIBLE_EMAIL_THREAD },
 			}),
 			this.db.activity.count({
-				where: { ...anchor, ...filterClause("meetings"), ...VISIBLE_EMAIL_THREAD },
+				where: {
+					...anchor,
+					...filterClause("meetings"),
+					...VISIBLE_EMAIL_THREAD,
+				},
 			}),
 		]);
 
@@ -205,7 +213,9 @@ export class ActivitiesService {
 		return serializeEntry(updated);
 	}
 
-	async excludeEmailThread(threadId: string): Promise<{ id: string; excludedAt: string | null }> {
+	async excludeEmailThread(
+		threadId: string,
+	): Promise<{ id: string; excludedAt: string | null }> {
 		const thread = await this.db.emailThread.findUnique({
 			where: { id: threadId },
 			select: { id: true },
@@ -220,12 +230,20 @@ export class ActivitiesService {
 			select: { id: true, excludedAt: true },
 		});
 
-		this.logger.log({ message: "Email thread excluded from synthesis", threadId });
+		this.logger.log({
+			message: "Email thread excluded from synthesis",
+			threadId,
+		});
 
-		return { id: updated.id, excludedAt: updated.excludedAt?.toISOString() ?? null };
+		return {
+			id: updated.id,
+			excludedAt: updated.excludedAt?.toISOString() ?? null,
+		};
 	}
 
-	async restoreEmailThread(threadId: string): Promise<{ id: string; excludedAt: string | null }> {
+	async restoreEmailThread(
+		threadId: string,
+	): Promise<{ id: string; excludedAt: string | null }> {
 		const thread = await this.db.emailThread.findUnique({
 			where: { id: threadId },
 			select: { id: true },
@@ -240,9 +258,15 @@ export class ActivitiesService {
 			select: { id: true, excludedAt: true },
 		});
 
-		this.logger.log({ message: "Email thread restored to synthesis", threadId });
+		this.logger.log({
+			message: "Email thread restored to synthesis",
+			threadId,
+		});
 
-		return { id: updated.id, excludedAt: updated.excludedAt?.toISOString() ?? null };
+		return {
+			id: updated.id,
+			excludedAt: updated.excludedAt?.toISOString() ?? null,
+		};
 	}
 
 	async myTasks(

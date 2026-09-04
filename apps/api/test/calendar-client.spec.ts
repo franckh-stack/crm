@@ -8,7 +8,7 @@ afterEach(() => {
 	globalThis.fetch = realFetch;
 });
 
-function stubCapturingUrl(): { calls: URL[] } {
+function stubCapturingUrl() {
 	const calls: URL[] = [];
 	globalThis.fetch = (async (input: string | URL | Request) => {
 		calls.push(new URL(input.toString()));

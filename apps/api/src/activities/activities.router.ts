@@ -90,7 +90,9 @@ export class ActivitiesRouter {
 		output: emailThreadExclusionOutput,
 		meta: restMeta("POST", "/activities/emails/exclude", ["Activities"]),
 	})
-	async excludeEmail(@Input() input: z.infer<typeof emailThreadExclusionInput>) {
+	async excludeEmail(
+		@Input() input: z.infer<typeof emailThreadExclusionInput>,
+	) {
 		return this.activities.excludeEmailThread(input.threadId);
 	}
 
@@ -99,7 +101,9 @@ export class ActivitiesRouter {
 		output: emailThreadExclusionOutput,
 		meta: restMeta("POST", "/activities/emails/restore", ["Activities"]),
 	})
-	async restoreEmail(@Input() input: z.infer<typeof emailThreadExclusionInput>) {
+	async restoreEmail(
+		@Input() input: z.infer<typeof emailThreadExclusionInput>,
+	) {
 		return this.activities.restoreEmailThread(input.threadId);
 	}
 }

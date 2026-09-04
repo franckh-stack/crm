@@ -8,7 +8,7 @@ afterEach(() => {
 	globalThis.fetch = realFetch;
 });
 
-function stubCapturingUrl(): { calls: URL[] } {
+function stubCapturingUrl() {
 	const calls: URL[] = [];
 	globalThis.fetch = (async (input: string | URL | Request) => {
 		calls.push(new URL(input.toString()));
@@ -31,9 +31,7 @@ describe("GmailClient.listMessages", () => {
 		});
 
 		const q = calls[0]?.searchParams.get("q");
-		expect(q).toBe(
-			`${WORK_MAIL_QUERY} after:1767225600 before:1769904000`,
-		);
+		expect(q).toBe(`${WORK_MAIL_QUERY} after:1767225600 before:1769904000`);
 	});
 });
 

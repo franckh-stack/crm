@@ -61,9 +61,19 @@ async function clean() {
 	await db.emailThread.deleteMany({
 		where: { rootMessageId: { startsWith: `<preresolved-${suffix}` } },
 	});
-	await db.contact.deleteMany({ where: { email: { endsWith: `@${unmatchedDomain}` } } });
-	await db.contact.deleteMany({ where: { email: `known-${suffix}@known.test` } });
-	await db.company.deleteMany({ where: { domain: { in: [unmatchedDomain, `known-${suffix}.test`, `other-${suffix}.test`] } } });
+	await db.contact.deleteMany({
+		where: { email: { endsWith: `@${unmatchedDomain}` } },
+	});
+	await db.contact.deleteMany({
+		where: { email: `known-${suffix}@known.test` },
+	});
+	await db.company.deleteMany({
+		where: {
+			domain: {
+				in: [unmatchedDomain, `known-${suffix}.test`, `other-${suffix}.test`],
+			},
+		},
+	});
 	await db.mailboxSync.deleteMany({ where: { userId } });
 	await db.user.deleteMany({ where: { id: userId } });
 }
@@ -71,7 +81,9 @@ async function clean() {
 beforeAll(async () => {
 	await clean();
 
-	await db.user.create({ data: { id: userId, name: "Test Rep", email: mailbox } });
+	await db.user.create({
+		data: { id: userId, name: "Test Rep", email: mailbox },
+	});
 	row = await db.mailboxSync.create({
 		data: { userId, source: "gmail", autoCreate: false },
 	});

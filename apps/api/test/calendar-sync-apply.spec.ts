@@ -4,7 +4,10 @@ import type { AgentTriggerService } from "../src/agent/agent-trigger.service";
 import { CompanyDirectoryService } from "../src/companies/company-directory.service";
 import { ActivityStampService } from "../src/crm/activity-stamp.service";
 import { EnrichmentLogService } from "../src/crm/enrichment-log.service";
-import type { CalendarClient, GoogleEvent } from "../src/google/calendar.client";
+import type {
+	CalendarClient,
+	GoogleEvent,
+} from "../src/google/calendar.client";
 import { CalendarSyncService } from "../src/google/calendar-sync.service";
 import { MailboxMatchService } from "../src/mailbox/mailbox-match.service";
 import type {
@@ -34,7 +37,9 @@ const match = new MailboxMatchService(db, directory, agent, log);
 const state = new SyncStateService(db);
 
 function tokenStub(result: TokenResult): MailboxTokenService {
-	return { accessTokenFor: async () => result } as unknown as MailboxTokenService;
+	return {
+		accessTokenFor: async () => result,
+	} as unknown as MailboxTokenService;
 }
 
 function calendarStub(items: GoogleEvent[]): CalendarClient {
@@ -192,7 +197,9 @@ describe("CalendarSyncService.apply() with preresolved", () => {
 		expect(first).toBe("written");
 
 		const afterFirst = await db.calendarEvent.findUnique({
-			where: { iCalUid_originalStartTime: { iCalUid, originalStartTime: startsAt } },
+			where: {
+				iCalUid_originalStartTime: { iCalUid, originalStartTime: startsAt },
+			},
 			select: { id: true, companyId: true, contactId: true },
 		});
 		expect(afterFirst?.companyId).toBe(knownCompanyId);
@@ -265,7 +272,9 @@ describe("CalendarSyncService.backfillForParticipant()", () => {
 		expect(result).toEqual({ status: "synced", written: 1 });
 
 		const stored = await db.calendarEvent.findUnique({
-			where: { iCalUid_originalStartTime: { iCalUid, originalStartTime: startsAt } },
+			where: {
+				iCalUid_originalStartTime: { iCalUid, originalStartTime: startsAt },
+			},
 			select: { contactId: true },
 		});
 		expect(stored?.contactId).toBe(contact.id);

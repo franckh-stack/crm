@@ -334,7 +334,11 @@ export class CalendarSyncService {
 		after: Date;
 		before: Date;
 		maxResults: number;
-	}): Promise<{ status: "synced" | "skipped"; written: number; reason?: string }> {
+	}): Promise<{
+		status: "synced" | "skipped";
+		written: number;
+		reason?: string;
+	}> {
 		const row = await this.state.get(input.userId, "calendar");
 		if (!row) {
 			return {

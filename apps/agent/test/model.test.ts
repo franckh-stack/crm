@@ -6,7 +6,7 @@ describe("deepseekModel", () => {
 		const model = deepseekModel();
 		expect(model.provider).toContain("deepseek");
 		expect(model.modelId).toBe("deepseek-v4-flash");
-		expect(typeof model.doGenerate).toBe("function");
-		expect(typeof model.doStream).toBe("function");
+		expect(model.doGenerate).toBeFunction();
+		expect(model.doStream).toBeFunction();
 	});
 });
