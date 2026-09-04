@@ -24,7 +24,8 @@ afterEach(() => {
 
 describe("vigieProcureBridge", () => {
 	it("returns null when the secret is unset -- no bridge, not an open one", () => {
-		process.env.VIGIEPROCURE_WEBHOOK_URL = "https://api.vigieproc.fr/api/v1/crm/webhooks";
+		process.env.VIGIEPROCURE_WEBHOOK_URL =
+			"https://api.vigieproc.fr/api/v1/crm/webhooks";
 		expect(vigieProcureBridge()).toBeNull();
 	});
 
@@ -34,7 +35,8 @@ describe("vigieProcureBridge", () => {
 	});
 
 	it("returns a bridge when both url and secret are set", () => {
-		process.env.VIGIEPROCURE_WEBHOOK_URL = "https://api.vigieproc.fr/api/v1/crm/webhooks";
+		process.env.VIGIEPROCURE_WEBHOOK_URL =
+			"https://api.vigieproc.fr/api/v1/crm/webhooks";
 		process.env.VIGIEPROCURE_WEBHOOK_SECRET = "test-secret";
 
 		const result = vigieProcureBridge();
