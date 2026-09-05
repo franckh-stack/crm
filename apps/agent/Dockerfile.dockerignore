@@ -1,0 +1,18 @@
+# apps/agent/Dockerfile.dockerignore
+#
+# Named to match Docker's Dockerfile-specific ignore-file convention
+# (<path-to-dockerfile-relative-to-context>.dockerignore, resolved at the
+# build context root) — same mechanism verified empirically in Task 3
+# (apps/api/Dockerfile.dockerignore): a plain apps/agent/.dockerignore is NOT
+# picked up because this build's context is the repo root
+# (`docker build -f apps/agent/Dockerfile ... .`), not apps/agent/.
+node_modules
+**/node_modules
+.turbo
+**/.turbo
+dist
+**/dist
+.eve
+**/.eve
+.git
+*.log

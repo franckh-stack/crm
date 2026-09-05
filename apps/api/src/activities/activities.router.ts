@@ -16,6 +16,8 @@ import {
 	activityCreateOutput,
 	completeInput,
 	completeOutput,
+	emailThreadExclusionInput,
+	emailThreadExclusionOutput,
 	myTasksInput,
 	myTasksOutput,
 	timelineCountsInput,
@@ -81,5 +83,27 @@ export class ActivitiesRouter {
 	})
 	async complete(@Input() input: z.infer<typeof completeInput>) {
 		return this.activities.complete(input.id, input.completed);
+	}
+
+	@Mutation({
+		input: emailThreadExclusionInput,
+		output: emailThreadExclusionOutput,
+		meta: restMeta("POST", "/activities/emails/exclude", ["Activities"]),
+	})
+	async excludeEmail(
+		@Input() input: z.infer<typeof emailThreadExclusionInput>,
+	) {
+		return this.activities.excludeEmailThread(input.threadId);
+	}
+
+	@Mutation({
+		input: emailThreadExclusionInput,
+		output: emailThreadExclusionOutput,
+		meta: restMeta("POST", "/activities/emails/restore", ["Activities"]),
+	})
+	async restoreEmail(
+		@Input() input: z.infer<typeof emailThreadExclusionInput>,
+	) {
+		return this.activities.restoreEmailThread(input.threadId);
 	}
 }
