@@ -1,5 +1,52 @@
 # Changelog
 
+## [1.16.0](https://github.com/franckh-stack/crm/compare/v1.15.3...v1.16.0) (2026-09-05)
+
+
+### Features
+
+* **activities:** allow excluding an email thread from the CRM synthesis ([6a4892d](https://github.com/franckh-stack/crm/commit/6a4892d3f6f8d5c1f838487a1e3cab15c44db60a))
+* **activities:** let a rep exclude an email thread from the CRM synthesis ([044e350](https://github.com/franckh-stack/crm/commit/044e350103e955417df5e26cd2f0c348e27e4600))
+* **agent:** notify VigieProcure on CRM deal lifecycle events ([c1f4305](https://github.com/franckh-stack/crm/commit/c1f430510589ddb454bc906ad7821cfa75ba5e60))
+* **agent:** route the LLM through DeepSeek instead of Vercel AI Gateway, add Dockerfile ([595a6f6](https://github.com/franckh-stack/crm/commit/595a6f6bb1aba2c681094b5c938bc8d0ea818cd2))
+* **calendar:** add q param + searchByParticipant for contact history backfill ([68c8b34](https://github.com/franckh-stack/crm/commit/68c8b348170b735b68921d653a29f8647af93322))
+* **calendar:** CalendarSyncService gains public apply()/preresolved/backfillForParticipant() ([03a91cc](https://github.com/franckh-stack/crm/commit/03a91cc8a8f84705b7da1c6f6716a3905e10a24c))
+* **companies:** resolve and set SIREN via VigieProcure ([32b7f2b](https://github.com/franckh-stack/crm/commit/32b7f2bb4e9d0d67e68b79206aa41bf0a9aff716))
+* **companies:** resolve and set SIREN via VigieProcure ([cfdb641](https://github.com/franckh-stack/crm/commit/cfdb64141ff58d29eeadf5d48d57a75e353c29ed))
+* **contacts:** add ContactHistoryBackfillService orchestrator ([e97d9b2](https://github.com/franckh-stack/crm/commit/e97d9b2610ae1930ba5c5df0f4a3e7a015099ee8))
+* **contacts:** automatic Gmail/Calendar history backfill on contact creation ([4dd3000](https://github.com/franckh-stack/crm/commit/4dd300041f587e263966c1a9dc1710049d0ef91a))
+* **contacts:** wire the history backfill into ContactsService.create() ([6946d28](https://github.com/franckh-stack/crm/commit/6946d280b01aa7f87e177b19d22964d5bce3b42a))
+* **db:** add siren column to Company, unique scoped on active records ([3d8b5b8](https://github.com/franckh-stack/crm/commit/3d8b5b853b08f22eec8e356f09d450174a3e2418))
+* **db:** colonne siren sur Company, unicite scopee archivedAt ([9061103](https://github.com/franckh-stack/crm/commit/9061103e247fa8fd713fb686ac6e26f4589a604b))
+* **db:** migration SQL add_company_siren ([aec33d5](https://github.com/franckh-stack/crm/commit/aec33d59927dddf32855b8524ba0d548a937d49e))
+* **gmail:** add searchByParticipant for contact history backfill ([5438f58](https://github.com/franckh-stack/crm/commit/5438f58adac3bf8875e94701673575e29e684a4b))
+* **mailbox:** ThreadWriterService.store() accepts preresolved company/contact + relinks ([319f3ac](https://github.com/franckh-stack/crm/commit/319f3ac5d85e3fb3b4920617d4f151e24caa2a02))
+* release release ([aec4f9d](https://github.com/franckh-stack/crm/commit/aec4f9dcaa934b7147a7fd2ae527163c8aecf2a4))
+
+
+### Fixes
+
+* **activities:** Notes tab was showing every synced email and meeting ([cb6e6f2](https://github.com/franckh-stack/crm/commit/cb6e6f2473057ea65583bd68209ae7835b693b4e))
+* **activities:** scope the Notes tab to notes/calls, not every synced email/meeting ([2c3192e](https://github.com/franckh-stack/crm/commit/2c3192e036ce7d47322cbdd25745ebdd990b7094))
+* **anti-slop:** let stubCapturingUrl's return type infer instead of widening ([8d4bb3f](https://github.com/franckh-stack/crm/commit/8d4bb3f9ccfdf4c40108adc20cc9688c46cf45c3))
+* **anti-slop:** name captured-value types by their owner, drop dead import ([b645260](https://github.com/franckh-stack/crm/commit/b64526014419238cdd6d23ff882b50d70b379413))
+* **anti-slop:** rename error to cause in ContactHistoryBackfillService.failed ([e507553](https://github.com/franckh-stack/crm/commit/e507553f5eb809c9772794185e638d2b11e6d9b7))
+* **anti-slop:** type VigieProcureEvent.payload with Prisma.InputJsonValue ([1a99fc4](https://github.com/franckh-stack/crm/commit/1a99fc4c53739f58204e7c5b937f6b75d1862beb))
+* **anti-slop:** type VigieProcureEvent.payload with Prisma.InputJsonValue ([d22d613](https://github.com/franckh-stack/crm/commit/d22d6132665c2130d3cefb6953a2f44b5eee1b48))
+* **anti-slop:** use toBeFunction() instead of typeof x === "function" ([cba97d1](https://github.com/franckh-stack/crm/commit/cba97d13ea82c0154b0f3a5ebfcc42c00f3dd67e))
+* **companies:** validate SIREN digits, drop unused conflict fields ([5d16454](https://github.com/franckh-stack/crm/commit/5d164549f0ebaf9c489fbf36b6a99a377d870916))
+* **gmail:** filter mailing-list broadcasts out of the contact relationship view ([e8ca9c2](https://github.com/franckh-stack/crm/commit/e8ca9c2bf4e1a2d0994f82af9ff5f716b6f9ae83))
+* **gmail:** filter out mailing-list broadcasts from personal correspondence ([0ffb62c](https://github.com/franckh-stack/crm/commit/0ffb62cb8ff73a538cb012da4df9273798547e06))
+* **infra:** apps/app runtime image is node:22-slim directly, no bun ([00cebb9](https://github.com/franckh-stack/crm/commit/00cebb9a0e721d88d1f0a2a8b3b02ea7dcbf29e0))
+* **infra:** move @crm/typescript-config and typescript to agent's dependencies ([7a0a50a](https://github.com/franckh-stack/crm/commit/7a0a50a8981c6aaff2c378049b47e698a6268655))
+* **infra:** skip postinstall scripts on the production-only reinstall ([120df57](https://github.com/franckh-stack/crm/commit/120df57babc2bde867345e418767b4e00699fd36))
+* **infra:** slim api/agent runtime images to production deps only ([eef531c](https://github.com/franckh-stack/crm/commit/eef531c14d8d12678467c9d33b4755287ef77953))
+
+
+### Refactors
+
+* **gmail:** extract parseGmailMessage into a pure, reusable module ([573c89c](https://github.com/franckh-stack/crm/commit/573c89c74cf8549697c4d323090b26945a8c3ad9))
+
 ## [1.15.3](https://github.com/trycompai/crm/compare/v1.15.2...v1.15.3) (2026-08-21)
 
 
