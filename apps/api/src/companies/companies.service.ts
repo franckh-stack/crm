@@ -47,6 +47,7 @@ import type {
 } from "./companies.contracts";
 import { normalizeDomain } from "./domain";
 import { FaviconService } from "./favicon.service";
+import { resolveSiren as resolveSirenFromVigieProcure } from "./vigieprocure-companies.client";
 
 const OWNER_SELECT = {
 	id: true,
@@ -183,6 +184,7 @@ export class CompaniesService {
 				githubUrl: true,
 				pricingUrl: true,
 				careersUrl: true,
+				siren: true,
 				enrichmentStatus: true,
 				enrichedAt: true,
 				enrichmentError: true,
@@ -718,6 +720,71 @@ export class CompaniesService {
 				]),
 			),
 		};
+	}
+
+	/**
+	 * Resout le SIREN d une company via VigieProcure. Ne persiste rien -- c est
+	 * setSiren qui ecrit, sur decision explicite de l appelant (voir doctrine
+	 * companies.contracts.ts::companySirenResolveOutput).
+	 */
+	async resolveSiren(id: string) {
+		const company = await this.db.company.findUnique({
+			where: { id },
+			select: { name: true, city: true, domain: true },
+		});
+
+		if (!company) {
+			throw new NotFoundException(`No company with id ${id}.`);
+		}
+
+		const resolution = await resolveSirenFromVigieProcure({
+			name: company.name,
+			city: company.city,
+			domain: company.domain,
+		});
+
+		if (resolution.outcome !== "ok") return resolution;
+
+		return { outcome: "ok" as const, candidates: resolution.candidates };
+	}
+
+	async setSiren(id: string, siren: string) {
+		const company = await this.db.company.findUnique({
+			where: { id },
+			select: { id: true },
+		});
+		if (!company) {
+			throw new NotFoundException(`No company with id ${id}.`);
+		}
+
+		try {
+			await this.db.company.update({
+				where: { id },
+				data: { siren },
+				select: { id: true },
+			});
+		} catch (cause) {
+			if (
+				cause instanceof PrismaNamespace.PrismaClientKnownRequestError &&
+				cause.code === "P2002"
+			) {
+				const conflicting = await this.db.company.findFirst({
+					where: { siren, archivedAt: null },
+					select: { id: true, name: true },
+				});
+				return {
+					outcome: "conflict" as const,
+					reason: conflicting
+						? `Ce SIREN est deja rattache a la fiche ${conflicting.name}.`
+						: "Ce SIREN est deja rattache a une autre fiche.",
+				};
+			}
+			throw this.translate(cause, id);
+		}
+
+		this.logger.log({ message: "Company SIREN set", companyId: id, siren });
+
+		return { outcome: "ok" as const, id, siren };
 	}
 
 	private translate(cause: unknown, id: string): never {
