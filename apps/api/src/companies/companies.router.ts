@@ -26,6 +26,10 @@ import {
 	companyOptionsInput,
 	companyResearchOutput,
 	companySetPrimaryContactOutput,
+	companySetSirenInput,
+	companySetSirenOutput,
+	companySirenResolveInput,
+	companySirenResolveOutput,
 	companySummaryOutput,
 	companyUpdateArgs,
 	setPrimaryContactInput,
@@ -185,5 +189,23 @@ export class CompaniesRouter {
 		@Input() input: z.infer<typeof setPrimaryContactInput>,
 	) {
 		return this.companies.setPrimaryContact(input.companyId, input.contactId);
+	}
+
+	@Mutation({
+		input: companySirenResolveInput,
+		output: companySirenResolveOutput,
+		meta: restMeta("POST", "/companies/{id}/resolve-siren", ["Companies"]),
+	})
+	async resolveSiren(@Input("id") id: string) {
+		return this.companies.resolveSiren(id);
+	}
+
+	@Mutation({
+		input: companySetSirenInput,
+		output: companySetSirenOutput,
+		meta: restMeta("POST", "/companies/{id}/siren", ["Companies"]),
+	})
+	async setSiren(@Input() input: z.infer<typeof companySetSirenInput>) {
+		return this.companies.setSiren(input.id, input.siren);
 	}
 }

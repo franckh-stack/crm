@@ -8,6 +8,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectDatabase } from "../database/database.constants";
 import { AGENT_DISPATCH } from "./agent-dispatch.config";
 import { bridge } from "./bridge";
+import { envoyerEvenementVigieProcure } from "./vigieprocure-bridge";
 
 export type CrmEventInput = {
 	[Type in CrmEventType]: {
@@ -197,15 +198,15 @@ export class AgentTriggerService {
 			emit: (input: CrmEventInput) => Promise<void>,
 		) => Promise<Result>,
 	): Promise<Result> {
-		const queued: CrmEventInput[] = [];
+		const queued: Array<{ taskId: string; input: CrmEventInput }> = [];
 		const result = await this.db.$transaction((tx) =>
 			work(tx, async (input) => {
-				await this.createEventTask(tx, input);
-				queued.push(input);
+				const taskId = await this.createEventTask(tx, input);
+				queued.push({ taskId, input });
 			}),
 		);
 
-		for (const input of queued) {
+		for (const { input } of queued) {
 			this.logger.log({
 				message: "Agent event queued",
 				type: input.type,
@@ -213,9 +214,36 @@ export class AgentTriggerService {
 				recordId: input.record.id,
 			});
 		}
-		if (queued.length > 0) this.poke();
+		if (queued.length > 0) {
+			this.poke();
+			for (const { taskId, input } of queued) {
+				void this.notifyVigieProcure(taskId, input);
+			}
+		}
 
 		return result;
+	}
+
+	/**
+	 * DEC-C-CRM-10 (Franck, 03/09/2026) : sens entrant F.24 active. Notifie
+	 * VigieProcure des memes evenements CRM que ceux dejа mis en file pour
+	 * l'agent Eve (`createEventTask`) -- best-effort, echec silencieux
+	 * journalise (meme doctrine que `poke()`). `taskId` (id de l'`AgentTask`
+	 * cree dans la meme transaction) sert d'`event_id` stable, dedupliquable
+	 * cote reception.
+	 */
+	private async notifyVigieProcure(
+		taskId: string,
+		input: CrmEventInput,
+	): Promise<void> {
+		await envoyerEvenementVigieProcure(
+			{
+				eventId: taskId,
+				kind: input.type,
+				payload: { record: input.record, data: input.data },
+			},
+			this.logger,
+		);
 	}
 
 	async fieldBackfillRecords(
@@ -520,13 +548,13 @@ export class AgentTriggerService {
 	private async createEventTask(
 		tx: Prisma.TransactionClient,
 		input: CrmEventInput,
-	): Promise<void> {
+	): Promise<string> {
 		const recordIds = {
 			contactId: input.record.kind === "contact" ? input.record.id : null,
 			companyId: input.record.kind === "company" ? input.record.id : null,
 			dealId: input.record.kind === "deal" ? input.record.id : null,
 		};
-		await tx.agentTask.create({
+		const task = await tx.agentTask.create({
 			data: {
 				...recordIds,
 				kind: "agent-event",
@@ -542,6 +570,7 @@ export class AgentTriggerService {
 				dueAt: new Date(),
 			},
 		});
+		return task.id;
 	}
 
 	canReachAgent(): boolean {

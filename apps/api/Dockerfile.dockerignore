@@ -1,0 +1,15 @@
+# apps/api/Dockerfile.dockerignore
+#
+# Named to match Docker's Dockerfile-specific ignore-file convention
+# (<path-to-dockerfile-relative-to-context>.dockerignore, resolved at the
+# build context root) — verified empirically that a plain apps/api/.dockerignore
+# is NOT picked up here, because Task 3's build command uses the repo root as
+# build context (`docker build -f apps/api/Dockerfile ... .`), not apps/api/.
+node_modules
+**/node_modules
+.turbo
+**/.turbo
+dist
+**/dist
+.git
+*.log

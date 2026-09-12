@@ -25,6 +25,7 @@ import { formatMoney } from "@crm/ui/lib/format";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AgentPanel } from "@/components/crm/agent-panel";
+import { CompanySirenField } from "@/components/crm/company-siren-field";
 import { EnrichmentActions } from "@/components/crm/enrichment-actions";
 import { EnrichmentIndicator } from "@/components/crm/enrichment-status";
 import { FieldsCog, RecordFields } from "@/components/crm/fields/record-fields";
@@ -386,6 +387,7 @@ function CompanyOverview({ company }: { company: Company }) {
 								saving={isSaving("country")}
 								onSave={(country) => save({ country })}
 							/>
+							<CompanySirenField companyId={company.id} siren={company.siren} />
 							<InlineSelectField
 								label="Owner"
 								value={company.owner?.id ?? UNASSIGNED}

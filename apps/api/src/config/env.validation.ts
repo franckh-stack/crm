@@ -123,6 +123,42 @@ export class EnvironmentVariables {
 	@IsString()
 	AGENT_BRIDGE_SECRET?: string;
 
+	// DEC-C-CRM-10 (Franck, 03/09/2026) : sens entrant F.24 active. Meme
+	// patron que AGENT_URL/AGENT_BRIDGE_SECRET -- vide = pas de bridge, pas
+	// un bridge ouvert (vigieprocure-bridge.ts::vigieProcureBridge).
+	@IsOptional()
+	@IsUrl(
+		{ require_tld: false, require_protocol: true },
+		{
+			message:
+				"VIGIEPROCURE_WEBHOOK_URL must be a full URL with a scheme, like https://api.vigieproc.fr/api/v1/crm/webhooks.",
+		},
+	)
+	VIGIEPROCURE_WEBHOOK_URL?: string;
+
+	@IsOptional()
+	@IsString()
+	VIGIEPROCURE_WEBHOOK_SECRET?: string;
+
+	// Sens sortant : le CRM appelle VigieProcure pour resoudre un SIREN
+	// (GET /api/v1/companies/resolve). Vide = fonctionnalite non configuree,
+	// jamais un appel non authentifie -- meme regle que les paires
+	// AGENT_URL/AGENT_BRIDGE_SECRET et VIGIEPROCURE_WEBHOOK_URL/_SECRET
+	// ci-dessus (vigieprocure-companies.client.ts::vigieProcureApi).
+	@IsOptional()
+	@IsUrl(
+		{ require_tld: false, require_protocol: true },
+		{
+			message:
+				"VIGIEPROCURE_API_URL must be a full URL with a scheme, like https://api.vigieproc.fr.",
+		},
+	)
+	VIGIEPROCURE_API_URL?: string;
+
+	@IsOptional()
+	@IsString()
+	VIGIEPROCURE_API_JWT?: string;
+
 	@IsOptional()
 	@IsString()
 	CRM_TELEMETRY_DISABLED?: string;

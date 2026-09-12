@@ -61,6 +61,7 @@ export class ThreadWriterService {
 		options: { mailbox: string; origin: SyncSource },
 		parsed: IncomingMessage,
 		context: MatchContext,
+		preresolved?: { companyId: string | null; contactId: string | null },
 	): Promise<boolean> {
 		const existing = await this.db.emailMessage.findUnique({
 			where: { rfcMessageId: parsed.rfcMessageId },
@@ -75,7 +76,15 @@ export class ThreadWriterService {
 				},
 			},
 		});
-		if (existing?.thread.activity) return false;
+		if (existing?.thread.activity) {
+			if (
+				preresolved?.contactId &&
+				this.canRelink(existing.thread, preresolved)
+			) {
+				await this.relink(existing.threadId, preresolved);
+			}
+			return false;
+		}
 
 		const repair = existing !== null;
 		const participants = [parsed.from, ...parsed.recipients];
@@ -96,22 +105,27 @@ export class ThreadWriterService {
 		let contactId = thread?.contactId ?? null;
 
 		if (!thread) {
-			const repliedTo =
-				outbound ||
-				(await this.hasOutboundInThread(parsed.rootId, options.mailbox));
+			if (preresolved) {
+				companyId = preresolved.companyId;
+				contactId = preresolved.contactId;
+			} else {
+				const repliedTo =
+					outbound ||
+					(await this.hasOutboundInThread(parsed.rootId, options.mailbox));
 
-			const match = await this.match.resolve(
-				{
-					participants,
-					allowCreate: row.autoCreate && repliedTo,
-					source: RecordSource.EMAIL,
-					ownerId: row.userId,
-				},
-				context,
-			);
+				const match = await this.match.resolve(
+					{
+						participants,
+						allowCreate: row.autoCreate && repliedTo,
+						source: RecordSource.EMAIL,
+						ownerId: row.userId,
+					},
+					context,
+				);
 
-			companyId = match.companyId;
-			contactId = match.contactId;
+				companyId = match.companyId;
+				contactId = match.contactId;
+			}
 
 			if (!companyId && !contactId) {
 				return false;
@@ -235,6 +249,50 @@ export class ThreadWriterService {
 				error instanceof Error ? error.stack : String(error),
 			);
 		}
+	}
+
+	/**
+	 * Only ever consulted when a caller passes `preresolved` (the contact
+	 * history backfill) -- never in the live incremental sync's default path.
+	 * Refuses to relink a thread that already points at a different contact
+	 * or a different company than the one being backfilled.
+	 */
+	private canRelink(
+		thread: { contactId: string | null; companyId: string | null },
+		preresolved: { companyId: string | null; contactId: string | null },
+	): boolean {
+		if (thread.contactId !== null) return false;
+		return (
+			thread.companyId === null || thread.companyId === preresolved.companyId
+		);
+	}
+
+	private async relink(
+		emailThreadId: string,
+		preresolved: { companyId: string | null; contactId: string | null },
+	): Promise<void> {
+		const companyPatch = preresolved.companyId
+			? { companyId: preresolved.companyId }
+			: {};
+
+		const at = await this.db.$transaction(async (tx) => {
+			const thread = await tx.emailThread.update({
+				where: { id: emailThreadId },
+				data: { contactId: preresolved.contactId, ...companyPatch },
+				select: { lastMessageAt: true },
+			});
+			await tx.activity.updateMany({
+				where: { emailThreadId },
+				data: { contactId: preresolved.contactId, ...companyPatch },
+			});
+			return thread.lastMessageAt;
+		});
+
+		await this.touch(
+			{ companyId: preresolved.companyId, contactId: preresolved.contactId },
+			at,
+			emailThreadId,
+		);
 	}
 
 	private async hasOutboundInThread(
