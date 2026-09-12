@@ -1,11 +1,11 @@
 import { CONFIG_MAX_AGE_SECONDS, isSiteId } from "@crm/db/tracking";
-import { API_URL } from "@/lib/env";
+import { API_URL, APP_URL } from "@/lib/env";
 import { trackerSource } from "@/lib/tracking/tracker";
 
 const EMPTY = "/* no tracking site is configured */\n";
 
 export async function GET(
-	request: Request,
+	_request: Request,
 	{ params }: { params: Promise<{ site: string }> },
 ): Promise<Response> {
 	const { site } = await params;
@@ -29,7 +29,13 @@ export async function GET(
 
 	if (!payload?.config) return empty();
 
-	const origin = new URL(request.url).origin;
+	// `new URL(request.url).origin` reflects the raw socket the app server
+	// sees, not the public Host -- under `next start` behind nginx this comes
+	// back as the container's bind address (0.0.0.0:3000), never the real
+	// public origin, confirmed by forcing Host/X-Forwarded-* headers directly
+	// against the container and observing no change. APP_URL is the known-good
+	// public origin already used for this exact purpose elsewhere in the stack.
+	const origin = APP_URL;
 	const source = trackerSource(
 		payload.config as Parameters<typeof trackerSource>[0],
 		`${origin}/api/t/e`,
