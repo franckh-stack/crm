@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/franckh-stack/crm/compare/v1.16.0...v1.17.0) (2026-09-12)
+
+
+### Features
+
+* **app:** pre vigieproc chantier ([1aff48e](https://github.com/franckh-stack/crm/commit/1aff48e164c51768da5fcd570578c8a8de058050))
+
 ## [1.16.0](https://github.com/franckh-stack/crm/compare/v1.15.3...v1.16.0) (2026-09-12)
 
 
