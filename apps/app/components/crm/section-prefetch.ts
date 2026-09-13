@@ -5,16 +5,9 @@ import { useCallback } from "react";
 import { companiesSearchParams } from "@/app/(app)/[slug]/companies/companies-search-params";
 import { contactsSearchParams } from "@/app/(app)/[slug]/contacts/contacts-search-params";
 import { dealsSearchParams } from "@/app/(app)/[slug]/deals/deals-search-params";
-import { marchesPublicsSearchParams } from "@/app/(app)/[slug]/marches-publics/marches-publics-search-params";
 import { useTRPC } from "@/lib/trpc/client";
 
-export type Section =
-	| "/"
-	| "/companies"
-	| "/contacts"
-	| "/deals"
-	| "/marches-publics"
-	| "/settings";
+export type Section = "/" | "/companies" | "/contacts" | "/deals" | "/settings";
 
 export function usePrefetchSection(): (section: string) => void {
 	const trpc = useTRPC();
@@ -45,13 +38,6 @@ export function usePrefetchSection(): (section: string) => void {
 				case "/deals":
 					void queryClient.prefetchQuery(
 						trpc.deals.list.queryOptions(dealsSearchParams.defaultInput()),
-					);
-					return;
-				case "/marches-publics":
-					void queryClient.prefetchQuery(
-						trpc.tenders.listOuverts.queryOptions(
-							marchesPublicsSearchParams.defaultInput(),
-						),
 					);
 					return;
 				default:

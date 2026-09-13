@@ -87,6 +87,8 @@ export type TendersPage = {
 export type TendersQuery = {
 	cpv?: string;
 	department?: string;
+	siren?: string;
+	status?: "active" | "awarded" | "previsionnel";
 	q?: string;
 	page?: number;
 	limit?: number;
@@ -100,11 +102,16 @@ export type TendersResult =
 	| { outcome: "failed"; reason: string };
 
 /**
- * Liste les marches ouverts via l'API VigieProcure
- * (`GET /api/v1/tenders?status=active`). `status` est TOUJOURS "active" --
- * ce n'est pas un parametre d'entree cote CRM, c'est le seul statut que
- * cette page a vocation a montrer (marches publies et non encore
- * echus, cf. api_v2/routers/tenders.py::_STATUTS).
+ * Liste les marches via l'API VigieProcure (`GET /api/v1/tenders`).
+ *
+ * `status` est un parametre d'entree optionnel cote CRM (mapping metier
+ * "En cours"=active / "Notifie"=awarded / "Prevu"=previsionnel, defini dans
+ * `tenders.contracts.ts`). Un appel SANS `status` transmet la requete telle
+ * quelle a api_v2, qui repond alors sans filtre de statut ("Tous") --
+ * c'est le comportement voulu par l'onglet "Marches publics" de la fiche
+ * compte, PAS un defaut a "active" impose ici (cf. api_v2/routers/tenders.py
+ * ::_STATUTS ; `status=active` doit desormais etre demande explicitement
+ * par l'appelant s'il veut "En cours").
  *
  * Pas de champ "lien vers l'avis d'origine" ici : `external_url` n'existe
  * QUE sur `GET /tenders/{id}` (extrait de `raw_data->>'url_avis'`), pas sur
@@ -117,12 +124,16 @@ export async function listOpenTenders(
 	if (!api) return { outcome: "not-configured" };
 
 	const target = new URL(api.url);
-	target.searchParams.set("status", "active");
 	// Omission volontaire des parametres vides : `q`/`cpv` exigent
 	// min_length>=2 et `department` min_length>=1 cote api_v2 -- envoyer une
 	// chaine vide donnerait un 422 sur CHAQUE chargement de page non filtre.
 	if (query.cpv) target.searchParams.set("cpv", query.cpv);
 	if (query.department) target.searchParams.set("department", query.department);
+	// api_v2 tronque au SIREN (9 premiers caracteres) quand un SIRET (14) est
+	// fourni -- cf. api_v2/routers/tenders.py::list_tenders. On envoie la
+	// valeur telle quelle, c'est la responsabilite d'api_v2, pas la notre.
+	if (query.siren) target.searchParams.set("siren", query.siren);
+	if (query.status) target.searchParams.set("status", query.status);
 	if (query.q) target.searchParams.set("q", query.q);
 	if (query.cursor) {
 		target.searchParams.set("cursor", query.cursor);

@@ -26,6 +26,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AgentPanel } from "@/components/crm/agent-panel";
 import { CompanySirenField } from "@/components/crm/company-siren-field";
+import { CompanyTendersPanel } from "@/components/crm/company-tenders-panel";
 import { EnrichmentActions } from "@/components/crm/enrichment-actions";
 import { EnrichmentIndicator } from "@/components/crm/enrichment-status";
 import { FieldsCog, RecordFields } from "@/components/crm/fields/record-fields";
@@ -206,6 +207,12 @@ export function CompanySheet({ companyId }: { companyId: string }) {
 					value: "activity",
 					label: "Activity",
 					content: <Timeline anchor={{ companyId: company.id }} />,
+				},
+				{
+					value: "marches-publics",
+					label: "Marches publics",
+					content: <CompanyTendersPanel siren={company.siren} />,
+					keepMounted: true,
 				},
 				{
 					value: "agent",

@@ -3,9 +3,17 @@ import { z } from "zod";
 // Bornes calquees sur api_v2/routers/tenders.py::list_tenders -- valider ici
 // evite d'expedier une requete que l'API VigieProcure refusera de toute
 // facon, et donne une erreur Zod lisible cote CRM plutot qu'un 422 distant.
+//
+// `status` : mapping metier valide cote fiche compte (onglet "Marches
+// publics") -- "En cours" = active, "Notifie" = awarded, "Prevu" =
+// previsionnel, "Tous" = parametre omis. `published`/`cancelled`/`expired`
+// existent cote api_v2 mais n'ont pas d'usage CRM identifie ; ne pas les
+// exposer ici tant qu'un besoin ne les justifie pas.
 export const tendersListOuvertsInput = z.object({
 	cpv: z.string().trim().min(2).max(400).optional(),
 	department: z.string().trim().min(1).max(3).optional(),
+	siren: z.string().trim().min(9).max(14).optional(),
+	status: z.enum(["active", "awarded", "previsionnel"]).optional(),
 	q: z.string().trim().min(2).max(200).optional(),
 	page: z.number().int().min(1).max(500).default(1),
 	limit: z.number().int().min(1).max(100).default(20),
