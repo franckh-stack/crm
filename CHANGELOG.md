@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.18.0](https://github.com/franckh-stack/crm/compare/v1.17.0...v1.18.0) (2026-09-13)
+
+
+### Features
+
+* **tenders:** page CRM Marches publics via API VigieProcure scopee ([a140bfb](https://github.com/franckh-stack/crm/commit/a140bfbef39a4d918334c0e27cda2f539c33c4e6))
+* **tenders:** page CRM Marches publics via API VigieProcure scopee ([6c43130](https://github.com/franckh-stack/crm/commit/6c43130e60836d39c57db90e00843183ec53a4a0))
+
 ## [1.17.0](https://github.com/franckh-stack/crm/compare/v1.16.0...v1.17.0) (2026-09-12)
 
 
