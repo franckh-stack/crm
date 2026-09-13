@@ -25,18 +25,13 @@ afterEach(() => {
 	else process.env.VIGIEPROCURE_API_JWT = previousJwt;
 });
 
+type FetchStub = { calledWith: () => URL };
+
 /** Stub fetch and capture the request URL it was called with. */
-function stub(
-	status: number,
-	body: z.core.util.JSONType,
-): { calledWith: () => URL } {
+function stub(status: number, body: z.core.util.JSONType): FetchStub {
 	let captured: URL | null = null;
 	globalThis.fetch = (async (input: Parameters<typeof fetch>[0]) => {
-		captured = new URL(
-			typeof input === "string" || input instanceof URL
-				? input
-				: (input as Request).url,
-		);
+		captured = input instanceof Request ? new URL(input.url) : new URL(input);
 		return new Response(JSON.stringify(body), {
 			status,
 			headers: { "content-type": "application/json" },

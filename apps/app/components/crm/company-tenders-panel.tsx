@@ -30,12 +30,12 @@ type Tender = Extract<
 // ce type d'etat local.
 type StatusFilter = "active" | "awarded" | "previsionnel" | "tous";
 
-const STATUS_LABELS: Record<StatusFilter, string> = {
+const STATUS_LABELS = {
 	active: "En cours",
 	awarded: "Notifie",
 	previsionnel: "Prevu",
 	tous: "Tous",
-};
+} satisfies Record<StatusFilter, string>;
 
 const STATUS_ORDER: StatusFilter[] = [
 	"active",
