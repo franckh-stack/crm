@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.19.0](https://github.com/franckh-stack/crm/compare/v1.18.0...v1.19.0) (2026-09-13)
+
+
+### Features
+
+* **companies:** onglet Marches publics par compte, retire la page globale ([56bbaa5](https://github.com/franckh-stack/crm/commit/56bbaa50ced5435acae3ef0e11da6ba7f41cb3c9))
+* **companies:** onglet Marches publics par compte, retire la page globale ([8e5d34f](https://github.com/franckh-stack/crm/commit/8e5d34fa3d8dd75a88157bd7790b046a1b8ee516))
+
+
+### Fixes
+
+* **tenders:** corrige 3 erreurs anti-slop (typeof, widening) ([b040ef9](https://github.com/franckh-stack/crm/commit/b040ef9eea0f2ea9d39c889f17f36fbe47e9ead0))
+
 ## [1.18.0](https://github.com/franckh-stack/crm/compare/v1.17.0...v1.18.0) (2026-09-13)
 
 

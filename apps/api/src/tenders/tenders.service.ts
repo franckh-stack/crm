@@ -16,6 +16,8 @@ export class TendersService {
 		return listOpenTenders({
 			cpv: input.cpv,
 			department: input.department,
+			siren: input.siren,
+			status: input.status,
 			q: input.q,
 			page: input.page,
 			limit: input.limit,
