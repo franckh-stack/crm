@@ -1,36 +1,40 @@
 "use client";
 
-import Renew from "@carbon/icons-react/es/Renew";
-import Search from "@carbon/icons-react/es/Search";
 import { Badge } from "@crm/ui/components/badge";
 import { Button } from "@crm/ui/components/button";
-import { Icon } from "@crm/ui/components/icon";
+import { EmptyCellValue } from "@crm/ui/components/empty-cell";
+import { Input } from "@crm/ui/components/input";
 import { Spinner } from "@crm/ui/components/spinner";
 import { cn } from "@crm/ui/lib/utils";
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { toast } from "sonner";
 import { PROPERTY_LABEL, PROPERTY_ROW } from "@/components/detail-sheet";
 import { useCrmCache } from "@/lib/trpc/cache";
 import { useTRPC } from "@/lib/trpc/client";
-import type { RouterOutputs } from "@/lib/trpc/types";
 
-type ResolveResult = RouterOutputs["companies"]["resolveSiren"];
-type SirenCandidate = Extract<
-	ResolveResult,
-	{ outcome: "ok" }
->["candidates"][number];
+const ROW = cn(PROPERTY_ROW, "items-center");
+const CONTROL =
+	"h-8 w-full justify-start px-2 font-normal hover:border-input hover:bg-muted/40 border border-transparent";
 
 function formatSiren(siren: string): string {
 	return siren.replace(/(\d{3})(?=\d)/g, "$1 ").trim();
 }
 
+function isValidSirenDraft(value: string): boolean {
+	return value.length === 9 && /^\d+$/.test(value);
+}
+
 /**
- * Affiche le SIREN d une company, ou propose de le resoudre via
- * VigieProcure. La resolution est une mutation (jamais un effet declenche
- * au chargement) -- le clic explicite reste le seul declencheur, y compris
- * pour l'ecriture automatique sur candidat unique "exact" (doctrine
- * validee par Franck : exception ciblee et reversible, pas un backfill).
+ * Affiche le SIREN d une company, et permet de le saisir/corriger a la
+ * main. La resolution automatique via la base SIRENE entreprises a ete
+ * retiree : les comptes du CRM sont souvent des entites publiques
+ * (mairies, hopitaux) absentes de cette base, et la resolution pouvait
+ * matcher une entite homonyme sans rapport puis l'ecrire sans validation
+ * humaine (decision Franck). Le SIREN est desormais un champ inline
+ * editable comme les autres champs de la fiche Company, avec une garde
+ * cote client (9 chiffres) avant l'appel serveur, qui reste la source de
+ * verite (regex stricte dans companies.contracts.ts).
  */
 export function CompanySirenField({
 	companyId,
@@ -41,8 +45,9 @@ export function CompanySirenField({
 }) {
 	const trpc = useTRPC();
 	const cache = useCrmCache();
-	const [candidates, setCandidates] = useState<SirenCandidate[] | null>(null);
-	const [notConfigured, setNotConfigured] = useState(false);
+	const id = useId();
+	const [editing, setEditing] = useState(false);
+	const [draft, setDraft] = useState(siren ?? "");
 
 	const setSirenMutation = useMutation(
 		trpc.companies.setSiren.mutationOptions({
@@ -51,7 +56,7 @@ export function CompanySirenField({
 					toast.error(result.reason);
 					return;
 				}
-				setCandidates(null);
+				setEditing(false);
 				await cache.company(companyId, { settle: "record" });
 				toast.success(`SIREN ${formatSiren(result.siren)} enregistre.`);
 			},
@@ -59,148 +64,76 @@ export function CompanySirenField({
 		}),
 	);
 
-	const resolve = useMutation(
-		trpc.companies.resolveSiren.mutationOptions({
-			onSuccess: (result) => {
-				if (result.outcome === "not-configured") {
-					setNotConfigured(true);
-					return;
-				}
-				if (result.outcome === "unauthorized" || result.outcome === "failed") {
-					toast.error(result.reason);
-					return;
-				}
+	const submit = () => {
+		if (!isValidSirenDraft(draft)) return;
+		setSirenMutation.mutate({ id: companyId, siren: draft });
+	};
 
-				if (result.candidates.length === 0) {
-					toast("Aucun SIREN trouve pour cette fiche.");
-					return;
-				}
-
-				const [only, ...rest] = result.candidates;
-				if (only && rest.length === 0 && only.confidence === "exact") {
-					setSirenMutation.mutate({ id: companyId, siren: only.siren });
-					return;
-				}
-
-				setCandidates(result.candidates);
-			},
-			onError: (error) => toast.error(error.message),
-		}),
-	);
-
-	if (siren) {
+	if (editing) {
 		return (
-			<div className={PROPERTY_ROW}>
-				<span className={PROPERTY_LABEL}>SIREN</span>
-				<Badge variant="mono">{formatSiren(siren)}</Badge>
+			<div className={ROW}>
+				<label htmlFor={id} className={PROPERTY_LABEL}>
+					SIREN
+				</label>
+				<div className="flex min-w-0 items-center gap-1.5">
+					<Input
+						id={id}
+						autoFocus
+						inputMode="numeric"
+						maxLength={9}
+						value={draft}
+						placeholder="123456789"
+						disabled={setSirenMutation.isPending}
+						onChange={(event) =>
+							setDraft(event.target.value.replace(/\D/g, "").slice(0, 9))
+						}
+						onKeyDown={(event) => {
+							if (event.key === "Enter") {
+								event.preventDefault();
+								submit();
+							}
+							if (event.key === "Escape") {
+								setDraft(siren ?? "");
+								setEditing(false);
+							}
+						}}
+					/>
+					<Button
+						variant="outline"
+						size="sm"
+						disabled={!isValidSirenDraft(draft) || setSirenMutation.isPending}
+						onClick={submit}
+					>
+						{setSirenMutation.isPending ? <Spinner /> : null}
+						Enregistrer
+					</Button>
+				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className={cn(PROPERTY_ROW, "items-start")}>
-			<span className={cn(PROPERTY_LABEL, "pt-1.5")}>SIREN</span>
-			<div className="flex min-w-0 flex-col gap-2">
-				{notConfigured ? (
-					<span className="text-muted-foreground text-sm">
-						Resolution SIREN non configuree sur cette installation.
-					</span>
+		<div className={ROW}>
+			<label htmlFor={id} className={PROPERTY_LABEL}>
+				SIREN
+			</label>
+			<Button
+				variant="ghost"
+				size="sm"
+				className={CONTROL}
+				onClick={() => {
+					setDraft(siren ?? "");
+					setEditing(true);
+				}}
+			>
+				{siren ? (
+					<Badge variant="mono">{formatSiren(siren)}</Badge>
 				) : (
-					<Button
-						variant="outline"
-						size="sm"
-						className="w-fit"
-						disabled={resolve.isPending || setSirenMutation.isPending}
-						onClick={() => {
-							setCandidates(null);
-							resolve.mutate({ id: companyId });
-						}}
-					>
-						{resolve.isPending || setSirenMutation.isPending ? (
-							<Spinner />
-						) : (
-							<Icon icon={Search} data-icon="inline-start" />
-						)}
-						Resoudre le SIREN
-					</Button>
+					<span className="truncate text-muted-foreground">
+						<EmptyCellValue />
+					</span>
 				)}
-
-				{candidates ? (
-					<SirenCandidateList
-						candidates={candidates}
-						saving={setSirenMutation.isPending}
-						onPick={(candidate) =>
-							setSirenMutation.mutate({
-								id: companyId,
-								siren: candidate.siren,
-							})
-						}
-						onRetry={() => resolve.mutate({ id: companyId })}
-					/>
-				) : null}
-			</div>
-		</div>
-	);
-}
-
-function SirenCandidateList({
-	candidates,
-	saving,
-	onPick,
-	onRetry,
-}: {
-	candidates: SirenCandidate[];
-	saving: boolean;
-	onPick: (candidate: SirenCandidate) => void;
-	onRetry: () => void;
-}) {
-	return (
-		<div className="flex flex-col gap-1.5 rounded-md border bg-muted/40 p-2">
-			<div className="flex items-center justify-between px-1">
-				<span className="font-medium text-muted-foreground text-xs">
-					{candidates.length === 1
-						? "1 correspondance possible"
-						: `${candidates.length} correspondances possibles`}
-				</span>
-				<Button
-					variant="ghost"
-					size="icon-xs"
-					disabled={saving}
-					onClick={onRetry}
-					aria-label="Relancer la recherche"
-				>
-					<Icon icon={Renew} />
-				</Button>
-			</div>
-			{candidates.map((candidate) => (
-				<button
-					key={candidate.siren}
-					type="button"
-					disabled={saving}
-					onClick={() => onPick(candidate)}
-					className="flex flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-left hover:bg-muted disabled:opacity-60"
-				>
-					<span className="flex w-full items-center justify-between gap-2">
-						<span className="truncate font-medium text-sm">
-							{candidate.nameCanonicalFull}
-						</span>
-						<Badge
-							variant={candidate.confidence === "exact" ? "default" : "outline"}
-						>
-							{candidate.confidence}
-						</Badge>
-					</span>
-					<span className="truncate text-muted-foreground text-xs">
-						{[
-							formatSiren(candidate.siren),
-							candidate.legalFormLabel,
-							candidate.city,
-						]
-							.filter(Boolean)
-							.join(" — ")}
-					</span>
-				</button>
-			))}
+			</Button>
 		</div>
 	);
 }
