@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.19.1](https://github.com/franckh-stack/crm/compare/v1.19.0...v1.19.1) (2026-09-14)
+
+
+### Fixes
+
+* **companies:** saisie manuelle du SIREN, retire la resolution auto ([7420502](https://github.com/franckh-stack/crm/commit/7420502aa9a4fee191366d6c22b3e3252eb8f344))
+* **companies:** saisie manuelle du SIREN, retire la resolution auto ([dda34c3](https://github.com/franckh-stack/crm/commit/dda34c3f8f3aedebe3c67f19fdaab2b248c27a86))
+
 ## [1.19.0](https://github.com/franckh-stack/crm/compare/v1.18.0...v1.19.0) (2026-09-13)
 
 
